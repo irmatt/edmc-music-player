@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>EDMC Music Player v1.1.2</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      width: 760px;
+      padding: 20px;
+      background: linear-gradient(135deg, #1e1e1e, #2d2d2d);
+      color: #fff;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    header {
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    #song-name {
+      font-size: 16px;
+      font-weight: 500;
+      text-align: center;
+      margin: 8px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #e0e0e0;
+    }
+
+    #iframe-player {
+      width: 720px;
+      height: 120px;
+      border: none;
+      display: none;
+      margin: 0 auto 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    #custom-player {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+    }
+
+    #waveform {
+      width: 80%;
+      margin: 10px 0;
+    }
+
+    #player-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      width: 80%;
+    }
+
+    #play-pause-btn, #prev-btn, #next-btn {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #play-pause-btn:hover, #prev-btn:hover, #next-btn:hover {
+      background-color: #0056b3;
+      transform: scale(1.05);
+    }
+
+    #seek-bar {
+      flex-grow: 1;
+      -webkit-appearance: none;
+      height: 6px;
+      background: #444;
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    #seek-bar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #007bff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+      transition: transform 0.2s ease;
+    }
+
+    #seek-bar::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    #seek-bar::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      background: #007bff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+      transition: transform 0.2s ease;
+    }
+
+    #time-display {
+      font-size: 12px;
+      color: #bbb;
+    }
+
+    #song-list {
+      height: 375px;
+      overflow-y: auto;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 5px;
+      margin-top: 10px;
+    }
+
+    #song-list div.song-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      transition: background-color 0.2s;
+    }
+
+    #song-list div.song-item:hover:not(.playing) {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    #song-list div.song-item.playing {
+      background-color: #007bff;
+      color: white;
+      border-radius: 4px;
+    }
+
+    #song-list div.song-item.no-audio {
+      opacity: 0.7;
+      color: #ff5555;
+    }
+
+    #song-list div.song-item .thanks-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 3px;
+      border-radius: 3px;
+      transition: background-color 0.2s;
+    }
+
+    #song-list div.song-item .thanks-btn:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    #song-list div.song-item .thanks-btn img {
+      width: 16px;
+      height: 16px;
+    }
+
+    #song-list div.song-item .thanks-btn .status-icon {
+      margin-left: 5px;
+      font-size: 14px;
+    }
+
+    #song-list div.song-item .thanks-btn .fa-spinner {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #song-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #song-list::-webkit-scrollbar-thumb {
+      background: #007bff;
+      border-radius: 4px;
+    }
+
+    #loading, #error {
+      text-align: center;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    #loading {
+      color: #aaa;
+      display: none;
+    }
+
+    #error {
+      color: #ff5555;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>EDMC Music Player</h1>
+  </header>
+  <div id="song-name">Loading...</div>
+  <iframe id="iframe-player" src=""></iframe>
+  <div id="custom-player">
+    <div id="waveform"></div>
+    <div id="player-controls">
+      <button id="prev-btn"><i class="fas fa-step-backward"></i></button>
+      <button id="play-pause-btn"><i class="fas fa-play"></i></button>
+      <button id="next-btn"><i class="fas fa-step-forward"></i></button>
+      <input type="range" id="seek-bar" min="0" max="100" value="0">
+    </div>
+    <div id="time-display">0:00 - 0:00</div>
+  </div>
+  <div id="song-list"></div>
+  <div id="loading">Loading track...</div>
+  <div id="error">Error: Unable to load track.</div>
+  <script src="wavesurfer.min.js"></script>
+  <script src="player.js"></script>
+</body>
+</html>
