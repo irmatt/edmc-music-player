@@ -14,6 +14,9 @@
   --wave-played: #65a9e0;
   --wave-rest: #43515e;
   --head: #1a2026;
+  --scroll-thumb: #3d4a56;
+  --scroll-track: #171c21;
+  --scroll-corner: var(--scroll-track);
 }
 
 * {
@@ -1153,12 +1156,16 @@ p {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3d4a56;
-  border: 3px solid #171c21;
+  background: var(--scroll-thumb);
+  border: 3px solid var(--scroll-track);
 }
 
 ::-webkit-scrollbar-track {
-  background: #171c21;
+  background: var(--scroll-track);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--scroll-corner);
 }
 
 /* ---- themes ---- */
@@ -1173,6 +1180,9 @@ p {
   --muted: #808080;
   --accent-soft: #0b2235;
   --head: #000;
+  --scroll-thumb: #2a2a2a;
+  --scroll-track: #000;
+  --scroll-corner: #000;
 }
 
 [data-theme="oled"] body,
@@ -1240,6 +1250,12 @@ p {
   color: #929292;
 }
 
+[data-theme="light"] {
+  --scroll-thumb: #b5bec8;
+  --scroll-track: #eef1f4;
+  --scroll-corner: #eef1f4;
+}
+
 [data-theme="light"] body,
 [data-theme="light"] .shell,
 [data-theme="light"] .main,
@@ -1304,8 +1320,18 @@ p {
   color: #123;
 }
 
-[data-theme="light"] .track-line.selected {
-  outline-color: var(--accent);
+[data-theme="light"] .tree-row.selected,
+[data-theme="light"] .favorite-row.selected,
+[data-theme="light"] .liked-row.selected {
+  background: #e4eef9;
+  box-shadow: inset 2px 0 0 var(--accent);
+  color: #123;
+}
+
+[data-theme="light"] .tree-row:hover,
+[data-theme="light"] .favorite-row:hover,
+[data-theme="light"] .liked-row:hover {
+  background: #eef4fa;
 }
 
 [data-theme="light"] .track-line.selected {

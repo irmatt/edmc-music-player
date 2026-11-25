@@ -453,7 +453,7 @@ impl TrackSource for HtmlSource {
                 let Ok(url) = base.join(href) else {
                     continue;
                 };
-                if !url.as_str().contains("/genre/") || url.as_str() == forum.url {
+                if !url.as_str().contains("/genre/") {
                     continue;
                 }
                 let name = link.text().collect::<String>().trim().to_owned();
