@@ -1,0 +1,9 @@
+[package]
+name = "edmc-audio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+rodio = { version = "0.23", default-features = false, features = ["playback", "mp3", "wav", "vorbis"] }

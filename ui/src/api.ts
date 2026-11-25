@@ -1,0 +1,48 @@
+import { invoke } from "@tauri-apps/api/core";
+import type {
+  DownloadOutcome,
+  Forum,
+  FrontendState,
+  QualityVariant,
+  Settings,
+  Track,
+  TrackBatch,
+  UiPreferences,
+} from "./types";
+
+export const api = {
+  state: () => invoke<FrontendState>("get_state"),
+  tree: () => invoke<Forum[]>("list_tree"),
+  children: (forum: Forum) => invoke<Forum[]>("list_children", { forum }),
+  loadCategory: (forum: Forum) => invoke<TrackBatch>("load_category", { forum }),
+  reloadTracks: () => invoke<Track[]>("reload_tracks"),
+  loadMore: () => invoke<TrackBatch>("load_more"),
+  refresh: () => invoke<TrackBatch>("refresh_category"),
+  playTrack: (index: number) => invoke<void>("play_track", { index }),
+  toggle: () => invoke<void>("toggle_play"),
+  next: () => invoke<void>("next_track"),
+  previous: () => invoke<void>("previous_track"),
+  seek: (seconds: number) => invoke<void>("seek", { seconds }),
+  setVolume: (volume: number) => invoke<void>("set_volume", { volume }),
+  setShuffle: (enabled: boolean) => invoke<void>("set_shuffle", { enabled }),
+  setRepeat: (mode: string) => invoke<void>("set_repeat", { mode }),
+  playNext: (index: number) => invoke<void>("play_next", { index }),
+  addToQueue: (index: number) => invoke<void>("add_to_queue", { index }),
+  removeFromQueue: (index: number) => invoke<void>("remove_from_queue", { index }),
+  reorder: (from: number, to: number) => invoke<void>("reorder_queue", { from, to }),
+  like: (id: string) => invoke<void>("like_track", { id }),
+  hide: (id: string, hidden: boolean) => invoke<void>("hide_track", { id, hidden }),
+  qualities: (id: string) => invoke<QualityVariant[]>("get_qualities", { id }),
+  download: (id: string, qualityId?: string) =>
+    invoke<DownloadOutcome>("download_track", { id, qualityId: qualityId ?? null }),
+  openPost: (id: string) => invoke<void>("open_post", { id }),
+  openDownloadPage: (id: string, qualityId?: string) =>
+    invoke<DownloadOutcome>("open_download_page", { id, qualityId: qualityId ?? null }),
+  copyLink: (id: string) => invoke<void>("copy_link", { id }),
+  savePrefs: (prefs: UiPreferences) => invoke<void>("save_ui_prefs", { prefs }),
+  settings: () => invoke<Settings>("get_settings"),
+  updateSettings: (settings: Settings) => invoke<void>("update_settings", { settings }),
+  clearCache: () => invoke<void>("clear_cache"),
+  signIn: () => invoke<void>("sign_in"),
+  signOut: () => invoke<void>("sign_out"),
+};
