@@ -54,11 +54,13 @@ async fn ensure_audio(state: &AppState, track: &edmc_core::Track) -> Result<Path
     Ok(destination)
 }
 
-pub async fn play_index(app: &AppHandle, state: &Arc<AppState>, index: usize) -> Result<(), String> {
-    let mut track = state
-        .queue
-        .lock()
-        .unwrap()
+async fn play_from_queue(
+    app: &AppHandle,
+    state: &Arc<AppState>,
+    queue: &[edmc_core::Track],
+    index: usize,
+) -> Result<(), String> {
+    let mut track = queue
         .get(index)
         .cloned()
         .ok_or_else(|| "Track not found".to_string())?;
@@ -70,14 +72,10 @@ pub async fn play_index(app: &AppHandle, state: &Arc<AppState>, index: usize) ->
             .resolve_track(&track)
             .await
             .map_err(|e| e.to_string())?;
-        if let Some(item) = state.queue.lock().unwrap().get_mut(index) {
-            *item = track.clone();
-        }
         let _ = app.emit("track-changed", json!({ "index": index, "track": track }));
     }
 
     let path = ensure_audio(state, &track).await?;
-
     let path_for_task = path.clone();
     let analysed = tokio::task::spawn_blocking(move || edmc_audio::analyze(&path_for_task)).await;
     let (duration, peaks) = match analysed {
@@ -90,10 +88,14 @@ pub async fn play_index(app: &AppHandle, state: &Arc<AppState>, index: usize) ->
     track.status = TrackStatus::Ready;
     let _ = state.db.save_track(&track);
 
-    if let Some(item) = state.queue.lock().unwrap().get_mut(index) {
+    // Keep both the active playback snapshot and any matching browse row fresh.
+    if let Some(item) = state.playback_queue.lock().unwrap().get_mut(index) {
         *item = track.clone();
     }
-    *state.current_index.lock().unwrap() = index;
+    if let Some(item) = state.queue.lock().unwrap().iter_mut().find(|item| item.id == track.id) {
+        *item = track.clone();
+    }
+    *state.playback_index.lock().unwrap() = index;
 
     let volume = state.settings.lock().unwrap().volume;
     state.engine.set_volume(volume);
@@ -103,7 +105,6 @@ pub async fn play_index(app: &AppHandle, state: &Arc<AppState>, index: usize) ->
         .map_err(|e| e.to_string())?;
 
     *state.now_playing.lock().unwrap() = Some(track.clone());
-
     let _ = app.emit(
         "track-changed",
         json!({ "index": index, "track": track, "playing": true }),
@@ -111,17 +112,55 @@ pub async fn play_index(app: &AppHandle, state: &Arc<AppState>, index: usize) ->
     Ok(())
 }
 
+/// Starts a fresh playback queue from the list the user clicked in.
+pub async fn play_track(app: &AppHandle, state: &Arc<AppState>, index: usize) -> Result<(), String> {
+    let queue = state.queue.lock().unwrap().clone();
+    if index >= queue.len() {
+        return Err("Track not found".into());
+    }
+    *state.playback_queue.lock().unwrap() = queue.clone();
+    *state.playback_index.lock().unwrap() = index;
+    *state.playback_origin.lock().unwrap() = state
+        .current_forum
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|forum| forum.url.clone());
+    play_from_queue(app, state, &queue, index).await
+}
+
+fn ensure_playback_queue(state: &AppState) -> Vec<edmc_core::Track> {
+    let active = state.playback_queue.lock().unwrap();
+    if !active.is_empty() {
+        return active.clone();
+    }
+    drop(active);
+    let browse = state.queue.lock().unwrap().clone();
+    if !browse.is_empty() {
+        *state.playback_queue.lock().unwrap() = browse.clone();
+        *state.playback_index.lock().unwrap() = *state.current_index.lock().unwrap();
+        *state.playback_origin.lock().unwrap() = state
+            .current_forum
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|forum| forum.url.clone());
+    }
+    browse
+}
+
 pub async fn advance(app: &AppHandle, state: &Arc<AppState>, direction: i32) -> Result<(), String> {
-    let length = state.queue.lock().unwrap().len();
+    let queue = ensure_playback_queue(state);
+    let length = queue.len();
     if length == 0 {
         return Ok(());
     }
-    let current = *state.current_index.lock().unwrap();
+    let current = *state.playback_index.lock().unwrap();
     let repeat = state.repeat.lock().unwrap().clone();
 
     if direction > 0 {
         if repeat == RepeatMode::One {
-            return play_index(app, state, current).await;
+            return play_from_queue(app, state, &queue, current).await;
         }
         let next = if state.shuffle.load(std::sync::atomic::Ordering::Relaxed) && length > 1 {
             use rand::Rng;
@@ -132,14 +171,14 @@ pub async fn advance(app: &AppHandle, state: &Arc<AppState>, direction: i32) -> 
         };
         if next >= length {
             if repeat == RepeatMode::All {
-                return play_index(app, state, 0).await;
+                return play_from_queue(app, state, &queue, 0).await;
             }
             state.engine.stop();
             *state.now_playing.lock().unwrap() = None;
             let _ = app.emit("track-changed", json!({ "index": current, "playing": false }));
             return Ok(());
         }
-        return play_index(app, state, next).await;
+        return play_from_queue(app, state, &queue, next).await;
     }
 
     let previous = if current == 0 {
@@ -151,5 +190,5 @@ pub async fn advance(app: &AppHandle, state: &Arc<AppState>, direction: i32) -> 
     } else {
         current - 1
     };
-    play_index(app, state, previous).await
+    play_from_queue(app, state, &queue, previous).await
 }

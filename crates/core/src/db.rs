@@ -382,7 +382,13 @@ impl Db {
             .query_row("SELECT json FROM settings WHERE id = 1", [], |row| row.get(0))
             .optional()?;
         match raw {
-            Some(json) => Ok(serde_json::from_str(&json)?),
+            Some(json) => {
+                let mut settings: Settings = serde_json::from_str(&json)?;
+                if !settings.auto_like_user_set {
+                    settings.auto_like_on_download = true;
+                }
+                Ok(settings)
+            }
             None => Ok(Settings::default()),
         }
     }

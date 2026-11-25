@@ -44,8 +44,9 @@ function Node({
   onExpandAlways: (forum: Forum) => void;
   onToggleFavorite: (forum: Forum) => void;
 }) {
+  const isSelfSubgenre = Boolean(forum.parent_url && forum.url === forum.parent_url);
   const expanded = forum.children.length > 0 && !prefs.collapsed.includes(forum.url);
-  const hasChildren = forum.children.length > 0 || depth < 2;
+  const hasChildren = !isSelfSubgenre && (forum.children.length > 0 || depth < 2);
   const favorite = prefs.favorites.includes(forum.url);
   return (
     <div className="tree-node">
@@ -64,7 +65,13 @@ function Node({
         <button
           className="tree-label"
           onClick={() => onSelect(forum)}
-          onDoubleClick={() => (expanded ? onExpand(forum) : onExpandAlways(forum))}
+          onDoubleClick={() =>
+            isSelfSubgenre
+              ? onSelect(forum)
+              : expanded
+                ? onExpand(forum)
+                : onExpandAlways(forum)
+          }
           title={forum.name}
         >
           {forum.name}

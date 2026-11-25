@@ -62,6 +62,7 @@ export interface Settings {
   media_keys: boolean;
   download_dir: string;
   auto_like_on_download: boolean;
+  auto_like_user_set: boolean;
 }
 
 export type RepeatMode = "off" | "all" | "one";

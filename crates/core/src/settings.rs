@@ -19,6 +19,8 @@ pub struct Settings {
     pub media_keys: bool,
     pub download_dir: String,
     pub auto_like_on_download: bool,
+    /// True once the user has explicitly saved their auto-like preference.
+    pub auto_like_user_set: bool,
 }
 
 impl Default for Settings {
@@ -34,7 +36,8 @@ impl Default for Settings {
             prefetch_next: false,
             media_keys: true,
             download_dir: downloads_dir().to_string_lossy().into_owned(),
-            auto_like_on_download: false,
+            auto_like_on_download: true,
+            auto_like_user_set: false,
         }
     }
 }

@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { QualityVariant, Settings, Track } from "../types";
 
 function bytes(value: number): string {
@@ -187,7 +188,7 @@ export function DataDirDialog({ defaultDir, onChoose, onUseDefault }: {
     }
   };
   return (
-    <Shell title="Choose data folder" onClose={() => {}}>
+    <Shell title="Choose data folder" onClose={() => getCurrentWindow().close()}>
       <p className="dialog-hint">
         This portable copy stores its library, cache and settings in:
       </p>

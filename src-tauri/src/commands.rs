@@ -11,7 +11,7 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::auth;
-use crate::playback::{advance, play_index};
+use crate::playback::{advance, play_track as start_playback};
 use crate::state::{AppState, FrontendState, RepeatMode};
 
 
@@ -277,7 +277,7 @@ pub async fn play_track(
     index: usize,
     state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {
-    play_index(&app, &Arc::clone(&state), index).await
+    start_playback(&app, &Arc::clone(&state), index).await
 }
 
 #[tauri::command]
@@ -339,41 +339,76 @@ pub fn set_repeat(mode: String, state: State<'_, Arc<AppState>>) -> Result<(), S
 
 #[tauri::command]
 pub fn play_next(index: usize, state: State<'_, Arc<AppState>>) {
-    let mut queue = state.queue.lock().unwrap();
-    if index >= queue.len() {
+    let Some(track) = state.queue.lock().unwrap().get(index).cloned() else {
         return;
+    };
+    let empty = state.playback_queue.lock().unwrap().is_empty();
+    if empty {
+        *state.playback_queue.lock().unwrap() = state.queue.lock().unwrap().clone();
+        *state.playback_index.lock().unwrap() = *state.current_index.lock().unwrap();
+        *state.playback_origin.lock().unwrap() = state
+            .current_forum
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|forum| forum.url.clone());
     }
-    let current = *state.current_index.lock().unwrap();
-    let track = queue.remove(index);
-    let insert_at = if index <= current { current } else { current + 1 };
+    let mut queue = state.playback_queue.lock().unwrap();
+    let current = *state.playback_index.lock().unwrap();
     let len = queue.len();
-    queue.insert(insert_at.min(len), track);
-    *state.current_index.lock().unwrap() = current.min(queue.len().saturating_sub(1));
+    queue.insert((current + 1).min(len), track);
 }
 
 #[tauri::command]
 pub fn add_to_queue(index: usize, state: State<'_, Arc<AppState>>) {
-    let mut queue = state.queue.lock().unwrap();
-    if let Some(track) = queue.get(index).cloned() {
-        queue.push(track);
+    let Some(track) = state.queue.lock().unwrap().get(index).cloned() else {
+        return;
+    };
+    let empty = state.playback_queue.lock().unwrap().is_empty();
+    if empty {
+        *state.playback_queue.lock().unwrap() = state.queue.lock().unwrap().clone();
+        *state.playback_origin.lock().unwrap() = state
+            .current_forum
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|forum| forum.url.clone());
     }
+    state.playback_queue.lock().unwrap().push(track);
 }
 
 #[tauri::command]
 pub fn remove_from_queue(index: usize, state: State<'_, Arc<AppState>>) {
-    let mut queue = state.queue.lock().unwrap();
-    if index >= queue.len() {
+    let Some(track) = state.queue.lock().unwrap().get(index).cloned() else {
         return;
-    }
-    let current = *state.current_index.lock().unwrap();
-    queue.remove(index);
-    *state.current_index.lock().unwrap() = if index < current {
-        current - 1
-    } else if index == current {
-        current.min(queue.len().saturating_sub(1))
-    } else {
-        current
     };
+
+    let mut playback = state.playback_queue.lock().unwrap();
+    if let Some(play_index) = playback.iter().position(|item| item.id == track.id) {
+        playback.remove(play_index);
+        let current = *state.playback_index.lock().unwrap();
+        *state.playback_index.lock().unwrap() = if play_index < current {
+            current - 1
+        } else if play_index == current {
+            current.min(playback.len().saturating_sub(1))
+        } else {
+            current
+        };
+    }
+    drop(playback);
+
+    let mut queue = state.queue.lock().unwrap();
+    if index < queue.len() {
+        queue.remove(index);
+        let current = *state.current_index.lock().unwrap();
+        *state.current_index.lock().unwrap() = if index < current {
+            current - 1
+        } else if index == current {
+            current.min(queue.len().saturating_sub(1))
+        } else {
+            current
+        };
+    }
 }
 
 #[tauri::command]
@@ -393,6 +428,34 @@ pub fn reorder_queue(from: usize, to: usize, state: State<'_, Arc<AppState>>) {
         current
     }
     .min(queue.len().saturating_sub(1));
+    drop(queue);
+
+    let same_list = state
+        .playback_origin
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(String::as_str)
+        == state
+            .current_forum
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|forum| forum.url.as_str());
+    let mut playback = state.playback_queue.lock().unwrap();
+    if same_list && from < playback.len() && to < playback.len() {
+        let track = playback.remove(from);
+        playback.insert(to, track);
+        let current = *state.playback_index.lock().unwrap();
+        *state.playback_index.lock().unwrap() = if from < current && to >= current {
+            current - 1
+        } else if from > current && to <= current {
+            current + 1
+        } else {
+            current
+        }
+        .min(playback.len().saturating_sub(1));
+    }
 }
 
 fn find_track(state: &AppState, id: &str) -> Result<Track, String> {
@@ -639,9 +702,10 @@ pub fn get_settings(state: State<'_, Arc<AppState>>) -> Settings {
 
 #[tauri::command]
 pub fn update_settings(
-    settings: Settings,
+    mut settings: Settings,
     state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {
+    settings.auto_like_user_set = true;
     state
         .db
         .save_settings(&settings)

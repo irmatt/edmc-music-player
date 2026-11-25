@@ -180,6 +180,7 @@ export default function App() {
 
   const expandAlways = useCallback(
     async (forum: Forum) => {
+      if (forum.parent_url && forum.url === forum.parent_url) return;
       if (state?.prefs.collapsed.includes(forum.url)) {
         await savePrefs({
           ...state.prefs,
