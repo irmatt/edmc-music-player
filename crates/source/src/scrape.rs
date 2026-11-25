@@ -121,12 +121,12 @@ impl HtmlSource {
                 .map(str::to_owned)
                 .unwrap_or_else(|| link.text().collect::<String>().trim().to_owned());
 
-            let uploaded_at = row
+            let times: Vec<String> = row
                 .select(&time_sel)
-                .next()
-                .and_then(|el| el.value().attr("datetime"))
-                .unwrap_or("")
-                .to_owned();
+                .filter_map(|el| el.value().attr("datetime").map(str::to_owned))
+                .collect();
+            let uploaded_at = times.first().cloned().unwrap_or_default();
+            let last_post_at = times.get(1).cloned().unwrap_or_else(|| uploaded_at.clone());
 
             let author = row
                 .select(&meta_sel)
@@ -192,6 +192,7 @@ impl HtmlSource {
                 forum,
                 author,
                 uploaded_at,
+                last_post_at,
                 replies,
                 views,
                 thanks_count,

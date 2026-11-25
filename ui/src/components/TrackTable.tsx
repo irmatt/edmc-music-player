@@ -52,6 +52,13 @@ function duration(track: Track): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function ArtThumb({ url }: { url: string | null }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [url]);
+  if (!url || failed) return <span>♫</span>;
+  return <img src={url} alt="" loading="lazy" onError={() => setFailed(true)} />;
+}
+
 export function TrackTable({
   tracks,
   prefs,
@@ -106,11 +113,7 @@ export function TrackTable({
             onPlay(index);
           }}
         >
-          {track.thumb_url ? (
-            <img src={track.thumb_url} alt="" loading="lazy" />
-          ) : (
-            <span>♫</span>
-          )}
+          <ArtThumb url={track.thumb_url} />
         </button>
       ),
     },
@@ -141,6 +144,12 @@ export function TrackTable({
       label: "Added",
       defaultWidth: 118,
       render: (track) => relativeDate(track.uploaded_at),
+    },
+    {
+      key: "last_post",
+      label: "Last activity",
+      defaultWidth: 118,
+      render: (track) => relativeDate(track.last_post_at),
     },
     {
       key: "thanks",

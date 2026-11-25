@@ -37,6 +37,7 @@ impl Db {
                 artist       TEXT NOT NULL DEFAULT '',
                 author       TEXT NOT NULL DEFAULT '',
                 uploaded_at  TEXT NOT NULL,
+                last_post_at TEXT NOT NULL DEFAULT '',
                 replies      INTEGER NOT NULL DEFAULT 0,
                 views        INTEGER NOT NULL DEFAULT 0,
                 thanks_count INTEGER NOT NULL DEFAULT 0,
@@ -97,6 +98,25 @@ impl Db {
             );
             "#,
         )?;
+        // Add columns introduced after the first release without losing data.
+        let has_last_post = {
+            let mut stmt = conn.prepare("PRAGMA table_info(tracks_v2)")?;
+            let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+            let mut found = false;
+            for row in rows {
+                if row? == "last_post_at" {
+                    found = true;
+                    break;
+                }
+            }
+            found
+        };
+        if !has_last_post {
+            conn.execute(
+                "ALTER TABLE tracks_v2 ADD COLUMN last_post_at TEXT NOT NULL DEFAULT ''",
+                [],
+            )?;
+        }
         Ok(Self {
             conn: Mutex::new(conn),
         })
@@ -112,13 +132,14 @@ impl Db {
         {
             let mut stmt = tx.prepare(
                 r#"INSERT INTO tracks_v2
-                   (id,title,artist,author,uploaded_at,replies,views,thanks_count,thumb_url,
+                   (id,title,artist,author,uploaded_at,last_post_at,replies,views,thanks_count,thumb_url,
                     forum,forum_url,post_url,beatexs_ids,beatexs_url,reaction_url,audio_url,
                     art_url,duration_secs,peaks,thanked,hidden,status,updated_at)
-                   VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)
+                   VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)
                    ON CONFLICT(id) DO UPDATE SET
                      title=excluded.title, artist=excluded.artist, author=excluded.author,
-                     uploaded_at=excluded.uploaded_at, replies=excluded.replies,
+                     uploaded_at=excluded.uploaded_at, last_post_at=excluded.last_post_at,
+                     replies=excluded.replies,
                      views=excluded.views, thanks_count=excluded.thanks_count,
                      thumb_url=excluded.thumb_url, forum=excluded.forum,
                      forum_url=excluded.forum_url, post_url=excluded.post_url,
@@ -131,6 +152,7 @@ impl Db {
                     track.artist,
                     track.author,
                     track.uploaded_at,
+                    track.last_post_at,
                     track.replies,
                     track.views,
                     track.thanks_count,
@@ -159,16 +181,17 @@ impl Db {
     pub fn save_track(&self, track: &Track) -> Result<()> {
         self.conn.lock().unwrap().execute(
             r#"INSERT OR REPLACE INTO tracks_v2
-               (id,title,artist,author,uploaded_at,replies,views,thanks_count,thumb_url,
+               (id,title,artist,author,uploaded_at,last_post_at,replies,views,thanks_count,thumb_url,
                 forum,forum_url,post_url,beatexs_ids,beatexs_url,reaction_url,audio_url,
                 art_url,duration_secs,peaks,thanked,hidden,status,updated_at)
-               VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)"#,
+               VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)"#,
             params![
                 track.id,
                 track.title,
                 track.artist,
                 track.author,
                 track.uploaded_at,
+                track.last_post_at,
                 track.replies,
                 track.views,
                 track.thanks_count,
@@ -461,38 +484,39 @@ impl Db {
 }
 
 fn row_to_track(row: &rusqlite::Row<'_>) -> rusqlite::Result<Track> {
-    let status = match row.get::<_, String>(21)?.as_str() {
+    let status = match row.get::<_, String>(22)?.as_str() {
         "resolving" => crate::models::TrackStatus::Resolving,
         "ready" => crate::models::TrackStatus::Ready,
         "no_audio" => crate::models::TrackStatus::NoAudio,
         "failed" => crate::models::TrackStatus::Failed,
         _ => crate::models::TrackStatus::Pending,
     };
-    let ids: Vec<String> = serde_json::from_str(&row.get::<_, String>(12)?).unwrap_or_default();
+    let ids: Vec<String> = serde_json::from_str(&row.get::<_, String>(13)?).unwrap_or_default();
     Ok(Track {
         id: row.get(0)?,
         title: row.get(1)?,
         artist: row.get(2)?,
         author: row.get(3)?,
         uploaded_at: row.get(4)?,
-        replies: row.get(5)?,
-        views: row.get(6)?,
-        thanks_count: row.get(7)?,
-        thumb_url: row.get(8)?,
-        forum: row.get(9)?,
-        forum_url: row.get(10)?,
-        post_url: row.get(11)?,
+        last_post_at: row.get(5)?,
+        replies: row.get(6)?,
+        views: row.get(7)?,
+        thanks_count: row.get(8)?,
+        thumb_url: row.get(9)?,
+        forum: row.get(10)?,
+        forum_url: row.get(11)?,
+        post_url: row.get(12)?,
         beatexs_ids: ids,
-        beatexs_url: row.get(13)?,
-        reaction_url: row.get(14)?,
-        audio_url: row.get(15)?,
-        art_url: row.get(16)?,
-        duration_secs: row.get(17)?,
-        peaks: decode_peaks(row.get::<_, Vec<u8>>(18)?),
-        thanked: row.get::<_, i64>(19)? != 0,
-        hidden: row.get::<_, i64>(20)? != 0,
+        beatexs_url: row.get(14)?,
+        reaction_url: row.get(15)?,
+        audio_url: row.get(16)?,
+        art_url: row.get(17)?,
+        duration_secs: row.get(18)?,
+        peaks: decode_peaks(row.get::<_, Vec<u8>>(19)?),
+        thanked: row.get::<_, i64>(20)? != 0,
+        hidden: row.get::<_, i64>(21)? != 0,
         status,
-        updated_at: row.get(22)?,
+        updated_at: row.get(23)?,
     })
 }
 

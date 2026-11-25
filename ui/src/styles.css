@@ -756,6 +756,24 @@ p {
   text-overflow: ellipsis;
 }
 
+.transport-breadcrumb {
+  align-self: flex-start;
+  margin-top: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent2);
+  font-size: 10px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transport-breadcrumb:hover {
+  text-decoration: underline;
+}
+
 .transport-center {
   flex: 1;
   min-width: 0;

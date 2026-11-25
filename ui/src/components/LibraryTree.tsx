@@ -61,7 +61,12 @@ function Node({
         >
           {loadingChildren.has(forum.url) ? "…" : hasChildren ? (expanded ? "▾" : "▸") : ""}
         </button>
-        <button className="tree-label" onClick={() => onSelect(forum)} onDoubleClick={() => onExpandAlways(forum)} title={forum.name}>
+        <button
+          className="tree-label"
+          onClick={() => onSelect(forum)}
+          onDoubleClick={() => (expanded ? onExpand(forum) : onExpandAlways(forum))}
+          title={forum.name}
+        >
           {forum.name}
         </button>
         {depth > 0 && (
@@ -133,7 +138,11 @@ export function LibraryTree({
               if (drag !== null && drag !== index) onReorderFavorite(drag, index);
               setDrag(null);
             }}
-            onClick={() => onSelect(forum)}
+            onClick={() => {
+              onExpandAlways(forum);
+              onSelect(forum);
+            }}
+            onDoubleClick={() => (prefs.collapsed.includes(forum.url) ? onExpandAlways(forum) : onExpand(forum))}
           >
             <span>★</span>
             <span className="tree-label">{forum.name}</span>

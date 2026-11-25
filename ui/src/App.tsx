@@ -370,6 +370,7 @@ export default function App() {
         case "title":
         case "track": return track.title.toLowerCase();
         case "uploaded": return track.uploaded_at;
+        case "last_post": return track.last_post_at;
         case "thanks": return track.thanks_count;
         case "comments": return track.replies;
         case "views": return track.views;
@@ -400,6 +401,15 @@ export default function App() {
   const hasMore = !isVirtualView && state.total_pages > (state.loaded_pages.at(-1) ?? 0);
   const activeId = state.tracks[state.current_index]?.id;
   const activeSortedIndex = activeId ? sortedTracks.findIndex((track) => track.id === activeId) : -1;
+
+  const findForum = (forums: Forum[], url: string): Forum | null => {
+    for (const forum of forums) {
+      if (forum.url === url) return forum;
+      const child = findForum(forum.children, url);
+      if (child) return child;
+    }
+    return null;
+  };
 
   return (
     <div className="shell">
@@ -515,6 +525,10 @@ export default function App() {
           const next = order[(order.indexOf(state.repeat) + 1) % order.length];
           await api.setRepeat(next);
           setState({ ...state, repeat: next });
+        }}
+        onBrowse={(track) => {
+          const forum = findForum(tree, track.forum_url);
+          if (forum) selectForum(forum);
         }}
       />
 

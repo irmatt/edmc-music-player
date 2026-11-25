@@ -18,6 +18,7 @@ export interface Track {
   artist: string;
   author: string;
   uploaded_at: string;
+  last_post_at: string;
   replies: number;
   views: number;
   thanks_count: number;

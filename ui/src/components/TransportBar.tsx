@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { FrontendState } from "../types";
+import { useEffect, useState } from "react";
+import type { FrontendState, Track } from "../types";
 import { Waveform } from "./Waveform";
 
 interface TransportBarProps {
@@ -11,6 +11,7 @@ interface TransportBarProps {
   onVolume: (value: number) => void;
   onShuffle: (value: boolean) => void;
   onRepeat: () => void;
+  onBrowse: (track: Track) => void;
 }
 
 function time(seconds: number): string {
@@ -29,27 +30,45 @@ export function TransportBar({
   onVolume,
   onShuffle,
   onRepeat,
+  onBrowse,
 }: TransportBarProps) {
   const [artOpen, setArtOpen] = useState(false);
+  const [artFailed, setArtFailed] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
   const track = state.tracks[state.current_index];
-  const artwork = track?.art_url || track?.thumb_url || null;
+  useEffect(() => {
+    setArtFailed(false);
+    setThumbFailed(false);
+  }, [track?.id]);
+  const primary = track?.art_url || null;
+  const artwork = artFailed ? track?.thumb_url || null : primary || track?.thumb_url || null;
+  const showImage = Boolean(artwork) && !(artFailed && thumbFailed);
   return (
     <div className="transport-bar">
       <div className="transport-track">
         <button
           className="transport-thumb"
           title="Show album art"
-          onClick={() => artwork && setArtOpen(true)}
+          onClick={() => showImage && setArtOpen(true)}
         >
-          {artwork ? (
-            <img src={artwork} alt="Album art" />
+          {showImage ? (
+            <img
+              src={artwork!}
+              alt="Album art"
+              onError={() => (artFailed ? setThumbFailed(true) : setArtFailed(true))}
+            />
           ) : (
             <span>♫</span>
           )}
         </button>
         <div className="transport-meta">
           <span className="transport-title">{track?.title ?? "Nothing playing"}</span>
-          <span className="transport-artist">{track?.artist || track?.forum || "EDMC Music Player"}</span>
+          <span className="transport-artist">{track?.artist || "EDMC Music Player"}</span>
+          {track && (
+            <button className="transport-breadcrumb" onClick={() => onBrowse(track)} title="Browse more from this category">
+              Music › {track.forum}
+            </button>
+          )}
         </div>
       </div>
       <div className="transport-center">
@@ -94,7 +113,7 @@ export function TransportBar({
           </div>
         </div>
       </div>
-      {artOpen && artwork && (
+      {artOpen && showImage && artwork && (
         <div className="art-overlay" onClick={() => setArtOpen(false)}>
           <div className="art-dialog" onClick={(event) => event.stopPropagation()}>
             <img src={artwork} alt="Album art" />
