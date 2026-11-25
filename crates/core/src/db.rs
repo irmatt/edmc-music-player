@@ -14,6 +14,8 @@ pub struct Db {
     conn: Mutex<Connection>,
 }
 
+const TRACK_COLUMNS: &str = "SELECT id,title,artist,author,uploaded_at,last_post_at,replies,views,thanks_count,thumb_url,forum,forum_url,post_url,beatexs_ids,beatexs_url,reaction_url,audio_url,art_url,duration_secs,peaks,thanked,hidden,status,updated_at";
+
 #[derive(Debug, Clone)]
 pub struct CachedHttp {
     pub etag: Option<String>,
@@ -217,12 +219,13 @@ impl Db {
 
     pub fn tracks_for_forum(&self, forum_url: &str, show_hidden: bool) -> Result<Vec<Track>> {
         let conn = self.conn.lock().unwrap();
+        let select = TRACK_COLUMNS;
         let sql = if show_hidden {
-            "SELECT * FROM tracks_v2 WHERE forum_url = ?1 ORDER BY uploaded_at DESC"
+            format!("{select} FROM tracks_v2 WHERE forum_url = ?1 ORDER BY uploaded_at DESC")
         } else {
-            "SELECT * FROM tracks_v2 WHERE forum_url = ?1 AND hidden = 0 ORDER BY uploaded_at DESC"
+            format!("{select} FROM tracks_v2 WHERE forum_url = ?1 AND hidden = 0 ORDER BY uploaded_at DESC")
         };
-        let mut stmt = conn.prepare(sql)?;
+        let mut stmt = conn.prepare(&sql)?;
         let rows = stmt.query_map([forum_url], |row| Ok(row_to_track(row)))?;
         let mut tracks = Vec::new();
         for row in rows {
@@ -233,7 +236,9 @@ impl Db {
 
     pub fn all_tracks(&self) -> Result<Vec<Track>> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT * FROM tracks_v2 ORDER BY updated_at DESC")?;
+        let mut stmt = conn.prepare(&format!(
+            "{TRACK_COLUMNS} FROM tracks_v2 ORDER BY updated_at DESC"
+        ))?;
         let rows = stmt.query_map([], |row| Ok(row_to_track(row)))?;
         let mut tracks = Vec::new();
         for row in rows {
