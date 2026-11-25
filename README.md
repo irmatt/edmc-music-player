@@ -1,7 +1,7 @@
 # EDMC Music Player
 
 A Windows desktop music player for the tracks posted on
-[edmc.to](https://edmc.to), styled after Windows Media Player 11. The player is a
+[edmc.to](https://edmc.to), The player is a
 Tauri 2 application: scraping, metadata, caching, downloads and audio playback
 are Rust; the interface is React + TypeScript. The original Chrome extension is
 kept in `extension/chrome`.
