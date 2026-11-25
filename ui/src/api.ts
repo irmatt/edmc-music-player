@@ -21,7 +21,9 @@ export const api = {
   reloadTracks: () => invoke<Track[]>("reload_tracks"),
   loadMore: () => invoke<TrackBatch>("load_more"),
   refresh: () => invoke<TrackBatch>("refresh_category"),
-  playTrack: (index: number) => invoke<void>("play_track", { index }),
+  playTrack: (index: number, queueIds?: string[]) =>
+    invoke<void>("play_track", { index, queueIds: queueIds ?? null }),
+  playQueueIndex: (index: number) => invoke<void>("play_queue_index", { index }),
   toggle: () => invoke<void>("toggle_play"),
   next: () => invoke<void>("next_track"),
   previous: () => invoke<void>("previous_track"),

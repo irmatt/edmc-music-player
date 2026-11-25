@@ -1131,6 +1131,58 @@ p {
   font-weight: 600;
 }
 
+.queue-dialog-list {
+  max-height: 55vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.queue-dialog-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  background: none;
+  text-align: left;
+}
+
+.queue-dialog-row:hover {
+  background: var(--panel2);
+}
+
+.queue-dialog-row.active {
+  background: var(--accent-soft);
+  border-color: var(--accent2);
+}
+
+.queue-dialog-index {
+  width: 22px;
+  flex: 0 0 22px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.queue-dialog-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.queue-dialog-main span:first-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-dialog-main span:last-child {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .data-dir-path {
   background: var(--panel2);
   border: 1px solid var(--border);

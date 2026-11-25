@@ -7,6 +7,7 @@ import {
   ColumnChooser,
   DataDirDialog,
   PropertiesDialog,
+  QueueDialog,
   QualityDialog,
   SettingsDialog,
 } from "./components/Dialogs";
@@ -42,10 +43,12 @@ export default function App() {
   const [quality, setQuality] = useState<{ trackId: string; action: "download" | "open"; options: QualityVariant[] } | null>(null);
   const [properties, setProperties] = useState<Track | null>(null);
   const [dialog, setDialog] = useState<"settings" | "columns" | "about" | null>(null);
+  const [queueOpen, setQueueOpen] = useState(false);
   const [downloading, setDownloading] = useState<Record<string, number>>({});
   const pending = useRef<Pending | null>(null);
   const toastTimer = useRef<number | null>(null);
   const refreshSeq = useRef(0);
+  const playFromListRef = useRef<(track: Track) => void>(() => {});
 
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -180,7 +183,12 @@ export default function App() {
 
   const expandAlways = useCallback(
     async (forum: Forum) => {
-      if (forum.parent_url && forum.url === forum.parent_url) return;
+      if (
+        forum.parent_url &&
+        forum.url.replace(/\/$/, "") === forum.parent_url.replace(/\/$/, "")
+      ) {
+        return;
+      }
       if (state?.prefs.collapsed.includes(forum.url)) {
         await savePrefs({
           ...state.prefs,
@@ -345,7 +353,7 @@ export default function App() {
     const index = state?.tracks.findIndex((item) => item.id === track.id) ?? -1;
     try {
       switch (action) {
-        case "play": if (index >= 0) await api.playTrack(index); break;
+        case "play": playFromListRef.current(track); break;
         case "play-next": if (index >= 0) await api.playNext(index); break;
         case "add-queue": if (index >= 0) await api.addToQueue(index); break;
         case "remove-queue": if (index >= 0) await api.removeFromQueue(index); break;
@@ -391,6 +399,16 @@ export default function App() {
       return prefs.descending ? -comparison : comparison;
     });
   }, [state]);
+
+  playFromListRef.current = (track: Track) => {
+    if (!state) return;
+    const queueIndex = state.tracks.findIndex((item) => item.id === track.id);
+    if (queueIndex >= 0) {
+      api
+        .playTrack(queueIndex, sortedTracks.map((item) => item.id))
+        .catch((error) => notify(String(error)));
+    }
+  };
 
   if (!state) {
     return <div className="boot">Starting EDMC Music Player…</div>;
@@ -503,8 +521,7 @@ export default function App() {
             onSort={(column) => savePrefs({ ...prefs, sort_by: column, descending: prefs.sort_by === column ? !prefs.descending : true })}
             onPlay={(index) => {
               const track = sortedTracks[index];
-              const queueIndex = state.tracks.findIndex((item) => item.id === track.id);
-              if (queueIndex >= 0) api.playTrack(queueIndex).catch((error) => notify(String(error)));
+              if (track) playFromListRef.current(track);
             }}
             onLike={like}
             onDownload={download}
@@ -530,6 +547,7 @@ export default function App() {
           const forum = findForum(tree, track.forum_url);
           if (forum) selectForum(forum);
         }}
+        onQueue={() => setQueueOpen(true)}
       />
 
       {context && (
@@ -563,6 +581,14 @@ export default function App() {
         />
       )}
       {dialog === "about" && <AboutDialog onClose={() => setDialog(null)} />}
+      {queueOpen && (
+        <QueueDialog
+          queue={state.playback_queue}
+          currentIndex={state.playback_index}
+          onPlay={(index) => api.playQueueIndex(index).catch((error) => notify(String(error)))}
+          onClose={() => setQueueOpen(false)}
+        />
+      )}
       {state.needs_data_dir && (
         <DataDirDialog
           defaultDir={state.data_dir}

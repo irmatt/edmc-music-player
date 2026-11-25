@@ -53,6 +53,8 @@ pub struct FrontendState {
     pub prefs: UiPreferences,
     pub current_forum: Option<Forum>,
     pub now_playing: Option<Track>,
+    pub playback_queue: Vec<Track>,
+    pub playback_index: usize,
     pub loaded_pages: Vec<u32>,
     pub total_pages: u32,
     pub liked_count: usize,
@@ -126,6 +128,8 @@ impl AppState {
             prefs: self.prefs.lock().unwrap().clone(),
             current_forum,
             now_playing: self.now_playing.lock().unwrap().clone(),
+            playback_queue: self.playback_queue.lock().unwrap().clone(),
+            playback_index: *self.playback_index.lock().unwrap(),
             loaded_pages,
             total_pages,
             liked_count: self

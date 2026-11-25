@@ -275,9 +275,19 @@ pub async fn refresh_category(
 pub async fn play_track(
     app: AppHandle,
     index: usize,
+    queue_ids: Option<Vec<String>>,
     state: State<'_, Arc<AppState>>,
 ) -> Result<(), String> {
-    start_playback(&app, &Arc::clone(&state), index).await
+    start_playback(&app, &Arc::clone(&state), index, queue_ids).await
+}
+
+#[tauri::command]
+pub async fn play_queue_index(
+    app: AppHandle,
+    index: usize,
+    state: State<'_, Arc<AppState>>,
+) -> Result<(), String> {
+    crate::playback::play_playback_index(&app, &Arc::clone(&state), index).await
 }
 
 #[tauri::command]

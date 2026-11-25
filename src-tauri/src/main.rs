@@ -234,6 +234,7 @@ fn main() {
             commands::load_more,
             commands::refresh_category,
             commands::play_track,
+            commands::play_queue_index,
             commands::toggle_play,
             commands::next_track,
             commands::previous_track,

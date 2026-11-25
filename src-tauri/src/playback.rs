@@ -1,5 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -113,19 +113,61 @@ async fn play_from_queue(
 }
 
 /// Starts a fresh playback queue from the list the user clicked in.
-pub async fn play_track(app: &AppHandle, state: &Arc<AppState>, index: usize) -> Result<(), String> {
-    let queue = state.queue.lock().unwrap().clone();
-    if index >= queue.len() {
+/// `ordered_ids` is the current UI sort order, so the queue follows what the
+/// user sees rather than the raw database order.
+pub async fn play_track(
+    app: &AppHandle,
+    state: &Arc<AppState>,
+    index: usize,
+    ordered_ids: Option<Vec<String>>,
+) -> Result<(), String> {
+    let browse = state.queue.lock().unwrap().clone();
+    let Some(target) = browse.get(index).cloned() else {
         return Err("Track not found".into());
-    }
-    *state.playback_queue.lock().unwrap() = queue.clone();
-    *state.playback_index.lock().unwrap() = index;
+    };
+
+    let mut queue = if let Some(ids) = ordered_ids {
+        let by_id: HashMap<String, edmc_core::Track> =
+            browse.into_iter().map(|track| (track.id.clone(), track)).collect();
+        let mut ordered: Vec<edmc_core::Track> = ids
+            .iter()
+            .filter_map(|id| by_id.get(id).cloned())
+            .collect();
+        if !ordered.iter().any(|track| track.id == target.id) {
+            ordered.push(target.clone());
+        }
+        ordered
+    } else {
+        browse
+    };
+
+    let play_index = queue
+        .iter()
+        .position(|track| track.id == target.id)
+        .unwrap_or(0);
+    *state.playback_queue.lock().unwrap() = std::mem::take(&mut queue);
+    *state.playback_index.lock().unwrap() = play_index;
     *state.playback_origin.lock().unwrap() = state
         .current_forum
         .lock()
         .unwrap()
         .as_ref()
         .map(|forum| forum.url.clone());
+
+    let playback = state.playback_queue.lock().unwrap().clone();
+    play_from_queue(app, state, &playback, play_index).await
+}
+
+pub async fn play_playback_index(
+    app: &AppHandle,
+    state: &Arc<AppState>,
+    index: usize,
+) -> Result<(), String> {
+    let queue = state.playback_queue.lock().unwrap().clone();
+    if index >= queue.len() {
+        return Err("Track not in queue".into());
+    }
+    *state.playback_index.lock().unwrap() = index;
     play_from_queue(app, state, &queue, index).await
 }
 

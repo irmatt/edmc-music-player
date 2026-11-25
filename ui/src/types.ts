@@ -93,6 +93,8 @@ export interface FrontendState {
   prefs: UiPreferences;
   current_forum: Forum | null;
   now_playing: Track | null;
+  playback_queue: Track[];
+  playback_index: number;
   loaded_pages: number[];
   total_pages: number;
   liked_count: number;

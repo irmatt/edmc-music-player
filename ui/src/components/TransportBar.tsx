@@ -12,6 +12,7 @@ interface TransportBarProps {
   onShuffle: (value: boolean) => void;
   onRepeat: () => void;
   onBrowse: (track: Track) => void;
+  onQueue: () => void;
 }
 
 function time(seconds: number): string {
@@ -31,6 +32,7 @@ export function TransportBar({
   onShuffle,
   onRepeat,
   onBrowse,
+  onQueue,
 }: TransportBarProps) {
   const [artOpen, setArtOpen] = useState(false);
   const [artFailed, setArtFailed] = useState(false);
@@ -97,6 +99,9 @@ export function TransportBar({
             onClick={onRepeat}
           >
             {state.repeat === "one" ? "↻¹" : "↻"}
+          </button>
+          <button className="transport-icon" title="Playback queue" onClick={onQueue}>
+            ☰
           </button>
           <span className="transport-time">{time(state.position)} / {time(state.duration)}</span>
           <div className="transport-volume">

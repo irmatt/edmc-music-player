@@ -44,7 +44,10 @@ function Node({
   onExpandAlways: (forum: Forum) => void;
   onToggleFavorite: (forum: Forum) => void;
 }) {
-  const isSelfSubgenre = Boolean(forum.parent_url && forum.url === forum.parent_url);
+  const isSelfSubgenre = Boolean(
+    forum.parent_url &&
+      forum.url.replace(/\/$/, "") === forum.parent_url.replace(/\/$/, ""),
+  );
   const expanded = forum.children.length > 0 && !prefs.collapsed.includes(forum.url);
   const hasChildren = !isSelfSubgenre && (forum.children.length > 0 || depth < 2);
   const favorite = prefs.favorites.includes(forum.url);

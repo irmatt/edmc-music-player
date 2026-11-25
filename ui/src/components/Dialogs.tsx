@@ -209,6 +209,40 @@ export function DataDirDialog({ defaultDir, onChoose, onUseDefault }: {
   );
 }
 
+export function QueueDialog({ queue, currentIndex, onPlay, onClose }: {
+  queue: Track[];
+  currentIndex: number;
+  onPlay: (index: number) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Shell title={`Playback queue (${queue.length})`} onClose={onClose}>
+      {queue.length === 0 ? (
+        <p className="dialog-hint">Nothing queued. Play a track to start a queue.</p>
+      ) : (
+        <div className="queue-dialog-list">
+          {queue.map((track, index) => (
+            <button
+              key={`${track.id}-${index}`}
+              className={`queue-dialog-row ${index === currentIndex ? "active" : ""}`}
+              onClick={() => {
+                onPlay(index);
+                onClose();
+              }}
+            >
+              <span className="queue-dialog-index">{index === currentIndex ? "▶" : index + 1}</span>
+              <span className="queue-dialog-main">
+                <span>{track.title || "Unknown track"}</span>
+                <span>{track.artist || track.forum}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </Shell>
+  );
+}
+
 export function AboutDialog({ onClose }: { onClose: () => void }) {
   return (
     <Shell title="About" onClose={onClose}>
