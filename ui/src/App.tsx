@@ -399,8 +399,6 @@ export default function App() {
   const isVirtualView =
     isLikedView || (state.current_forum?.url.startsWith("search://") ?? false);
   const hasMore = !isVirtualView && state.total_pages > (state.loaded_pages.at(-1) ?? 0);
-  const activeId = state.tracks[state.current_index]?.id;
-  const activeSortedIndex = activeId ? sortedTracks.findIndex((track) => track.id === activeId) : -1;
 
   const findForum = (forums: Forum[], url: string): Forum | null => {
     for (const forum of forums) {
@@ -487,7 +485,7 @@ export default function App() {
           <TrackTable
             tracks={sortedTracks}
             prefs={prefs}
-            currentIndex={activeSortedIndex}
+            playingId={state.now_playing?.id ?? null}
             playing={state.playing}
             downloading={downloading}
             hasMore={hasMore}

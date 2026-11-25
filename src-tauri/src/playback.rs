@@ -102,6 +102,8 @@ pub async fn play_index(app: &AppHandle, state: &Arc<AppState>, index: usize) ->
         .play_file(&path, Some(duration))
         .map_err(|e| e.to_string())?;
 
+    *state.now_playing.lock().unwrap() = Some(track.clone());
+
     let _ = app.emit(
         "track-changed",
         json!({ "index": index, "track": track, "playing": true }),
@@ -133,6 +135,7 @@ pub async fn advance(app: &AppHandle, state: &Arc<AppState>, direction: i32) -> 
                 return play_index(app, state, 0).await;
             }
             state.engine.stop();
+            *state.now_playing.lock().unwrap() = None;
             let _ = app.emit("track-changed", json!({ "index": current, "playing": false }));
             return Ok(());
         }

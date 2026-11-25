@@ -11,7 +11,7 @@ import type { Track, UiPreferences } from "../types";
 interface TrackTableProps {
   tracks: Track[];
   prefs: UiPreferences;
-  currentIndex: number;
+  playingId: string | null;
   playing: boolean;
   downloading: Record<string, number>;
   hasMore: boolean;
@@ -62,7 +62,7 @@ function ArtThumb({ url }: { url: string | null }) {
 export function TrackTable({
   tracks,
   prefs,
-  currentIndex,
+  playingId,
   playing,
   downloading,
   hasMore,
@@ -124,7 +124,7 @@ export function TrackTable({
       render: (track) => (
         <div className="cell-title">
           <span className="title-line">
-            {track === tracks[currentIndex] && playing ? (
+            {track.id === playingId && playing ? (
               <span className="playing-dot">▶</span>
             ) : null}
             {track.title || "Unknown track"}
@@ -368,7 +368,7 @@ export function TrackTable({
             <div
               key={track.id + virtualRow.index}
               className={`track-line ${
-                virtualRow.index === currentIndex ? "active" : ""
+                track.id === playingId ? "active" : ""
               } ${virtualRow.index === selected ? "selected" : ""} ${
                 track.hidden ? "hidden" : ""
               }`}

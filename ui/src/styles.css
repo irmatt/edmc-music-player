@@ -1163,6 +1163,18 @@ p {
 
 /* ---- themes ---- */
 
+[data-theme="oled"] {
+  --bg: #000;
+  --bg2: #000;
+  --panel: #030303;
+  --panel2: #080808;
+  --border: #171717;
+  --text: #ededed;
+  --muted: #808080;
+  --accent-soft: #0b2235;
+  --head: #000;
+}
+
 [data-theme="oled"] body,
 [data-theme="oled"] .shell,
 [data-theme="oled"] .main,
@@ -1180,9 +1192,12 @@ p {
 [data-theme="oled"] .toolbar,
 [data-theme="oled"] .transport-bar,
 [data-theme="oled"] .modal-title,
-[data-theme="oled"] .modal-footer {
-  background: #060606;
-  border-color: #1c1c1c;
+[data-theme="oled"] .modal-footer,
+[data-theme="oled"] .menu-popup,
+[data-theme="oled"] .context-menu,
+[data-theme="oled"] .track-head {
+  background: #000;
+  border-color: #161616;
   color: #ededed;
 }
 

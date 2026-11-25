@@ -67,7 +67,7 @@ export function TitleBar({
                     <div className="menu-section-title">Theme</div>
                     {[
                       ["wmp11", "Grey"],
-                      ["oled", "OLED black"],
+                      ["oled", "Black"],
                       ["light", "Light"],
                     ].map(([value, label]) => (
                       <button

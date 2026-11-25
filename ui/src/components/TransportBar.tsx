@@ -35,7 +35,7 @@ export function TransportBar({
   const [artOpen, setArtOpen] = useState(false);
   const [artFailed, setArtFailed] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
-  const track = state.tracks[state.current_index];
+  const track = state.now_playing;
   useEffect(() => {
     setArtFailed(false);
     setThumbFailed(false);

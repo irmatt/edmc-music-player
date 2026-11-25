@@ -91,6 +91,7 @@ export interface FrontendState {
   settings: Settings;
   prefs: UiPreferences;
   current_forum: Forum | null;
+  now_playing: Track | null;
   loaded_pages: number[];
   total_pages: number;
   liked_count: number;
