@@ -177,6 +177,32 @@ export default function App() {
     }
   }, [notify, savePrefs, state, updateTreeChildren]);
 
+  const expandAlways = useCallback(
+    async (forum: Forum) => {
+      if (state?.prefs.collapsed.includes(forum.url)) {
+        await savePrefs({
+          ...state.prefs,
+          collapsed: state.prefs.collapsed.filter((url) => url !== forum.url),
+        });
+      }
+      if (forum.children.length > 0) return;
+      setLoadingChildren((current) => new Set(current).add(forum.url));
+      try {
+        const children = await api.children(forum);
+        setTree((current) => updateTreeChildren(current, forum.url, children));
+      } catch (error) {
+        notify(String(error));
+      } finally {
+        setLoadingChildren((current) => {
+          const next = new Set(current);
+          next.delete(forum.url);
+          return next;
+        });
+      }
+    },
+    [notify, savePrefs, state, updateTreeChildren],
+  );
+
   const selectForum = useCallback(async (forum: Forum) => {
     setSelected(forum);
     if (forum.url.startsWith("liked://")) {
@@ -191,6 +217,7 @@ export default function App() {
       }
       return;
     }
+    await expandAlways(forum);
     if (forum.children.length > 0) {
       setState((current) => current ? { ...current, tracks: [], current_forum: forum } : current);
       if (state?.prefs.collapsed.includes(forum.url)) {
@@ -241,6 +268,21 @@ export default function App() {
       setProgress(null);
     }
   }, [notify, refresh, selected]);
+
+  const search = useCallback(
+    async (query: string) => {
+      setLoading(true);
+      try {
+        await api.searchTracks(query);
+        await refresh();
+      } catch (error) {
+        notify(String(error));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [notify, refresh],
+  );
 
   const like = useCallback(async (track: Track) => {
     try {
@@ -353,7 +395,9 @@ export default function App() {
 
   const prefs = state.prefs;
   const isLikedView = state.current_forum?.url.startsWith("liked://") ?? false;
-  const hasMore = !isLikedView && state.total_pages > (state.loaded_pages.at(-1) ?? 0);
+  const isVirtualView =
+    isLikedView || (state.current_forum?.url.startsWith("search://") ?? false);
+  const hasMore = !isVirtualView && state.total_pages > (state.loaded_pages.at(-1) ?? 0);
   const activeId = state.tracks[state.current_index]?.id;
   const activeSortedIndex = activeId ? sortedTracks.findIndex((track) => track.id === activeId) : -1;
 
@@ -386,6 +430,7 @@ export default function App() {
             loadingChildren={loadingChildren}
             onSelect={selectForum}
             onExpand={expand}
+            onExpandAlways={expandAlways}
             onToggleFavorite={(forum) => {
               const favorites = prefs.favorites.includes(forum.url)
                 ? prefs.favorites.filter((url) => url !== forum.url)
@@ -417,13 +462,13 @@ export default function App() {
               <h1>{state.current_forum?.name ?? selected?.name ?? "Music"}</h1>
               <span>{state.tracks.length} tracks · {state.loaded_pages.length} pages loaded</span>
             </div>
-            <button className="tool-button" onClick={doRefresh} disabled={loading || !selected || isLikedView}>↻ Refresh</button>
+            <button className="tool-button" onClick={doRefresh} disabled={loading || !selected || isVirtualView}>↻ Refresh</button>
           </div>
           <Toolbar
             prefs={prefs}
             loading={loading}
             progress={progress}
-            onRefresh={doRefresh}
+            onSearch={search}
             onToggleHidden={toggleHidden}
             onArtistFirst={(artist_first) => savePrefs({ ...prefs, artist_first })}
             onRowScale={(row_scale) => savePrefs({ ...prefs, row_scale })}

@@ -379,6 +379,26 @@ p {
   accent-color: var(--accent2);
 }
 
+.search-form {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.search-form input {
+  width: 190px;
+  background: #171c21;
+  border: 1px solid var(--border);
+  padding: 4px 7px;
+  color: var(--text);
+}
+
+.search-form button {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #303a44, #252e37);
+  padding: 4px 10px;
+}
+
 .toolbar-spacer {
   flex: 1;
 }
@@ -489,7 +509,7 @@ p {
 
 .track-line.selected {
   background: var(--panel2);
-  outline: 1px solid var(--accent2);
+  outline: 2px solid var(--accent2);
 }
 
 .track-line.active {
@@ -523,6 +543,17 @@ p {
 
 .column-resizer:hover {
   background: var(--accent2);
+}
+
+.column-drag-ghost {
+  position: fixed;
+  z-index: 120;
+  padding: 4px 10px;
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent2);
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 .head-cell.dragging {
@@ -1161,6 +1192,11 @@ p {
   border-color: #1c1c1c;
 }
 
+[data-theme="oled"] .track-line.selected {
+  background: #17324a;
+  outline: 2px solid var(--accent2);
+}
+
 [data-theme="oled"] .muted,
 [data-theme="oled"] .sub-line,
 [data-theme="oled"] .transport-artist,
@@ -1237,6 +1273,37 @@ p {
 
 [data-theme="light"] .track-line.selected {
   outline-color: var(--accent);
+}
+
+[data-theme="light"] .track-line.selected {
+  background: #cfe3f6;
+  outline: 2px solid var(--accent);
+}
+
+[data-theme="light"] .menu-popup,
+[data-theme="light"] .menu-popup button,
+[data-theme="light"] .menu-section-title {
+  background: #fff;
+  color: #1c2430;
+  border-color: #b5bec8;
+}
+
+[data-theme="light"] .menu-popup button:hover {
+  background: #dce9f6;
+  color: #123;
+}
+
+[data-theme="light"] .menu-button:hover,
+[data-theme="light"] .menu-button.active {
+  background: #dce9f6;
+  color: #123;
+}
+
+[data-theme="light"] .search-form input,
+[data-theme="light"] .search-form button {
+  background: #fff;
+  color: #1c2430;
+  border-color: #b5bec8;
 }
 
 [data-theme="light"] .muted,

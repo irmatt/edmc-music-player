@@ -10,6 +10,7 @@ interface LibraryTreeProps {
   loadingChildren: Set<string>;
   onSelect: (forum: Forum) => void;
   onExpand: (forum: Forum) => void;
+  onExpandAlways: (forum: Forum) => void;
   onToggleFavorite: (forum: Forum) => void;
   onReorderFavorite: (from: number, to: number) => void;
 }
@@ -30,6 +31,7 @@ function Node({
   loadingChildren,
   onSelect,
   onExpand,
+  onExpandAlways,
   onToggleFavorite,
 }: {
   forum: Forum;
@@ -39,6 +41,7 @@ function Node({
   loadingChildren: Set<string>;
   onSelect: (forum: Forum) => void;
   onExpand: (forum: Forum) => void;
+  onExpandAlways: (forum: Forum) => void;
   onToggleFavorite: (forum: Forum) => void;
 }) {
   const expanded = forum.children.length > 0 && !prefs.collapsed.includes(forum.url);
@@ -58,7 +61,7 @@ function Node({
         >
           {loadingChildren.has(forum.url) ? "…" : hasChildren ? (expanded ? "▾" : "▸") : ""}
         </button>
-        <button className="tree-label" onClick={() => onSelect(forum)} title={forum.name}>
+        <button className="tree-label" onClick={() => onSelect(forum)} onDoubleClick={() => onExpandAlways(forum)} title={forum.name}>
           {forum.name}
         </button>
         {depth > 0 && (
@@ -85,6 +88,7 @@ function Node({
               loadingChildren={loadingChildren}
               onSelect={onSelect}
               onExpand={onExpand}
+              onExpandAlways={onExpandAlways}
               onToggleFavorite={onToggleFavorite}
             />
           ))}
@@ -103,6 +107,7 @@ export function LibraryTree({
   loadingChildren,
   onSelect,
   onExpand,
+  onExpandAlways,
   onToggleFavorite,
   onReorderFavorite,
 }: LibraryTreeProps) {
@@ -160,6 +165,7 @@ export function LibraryTree({
           loadingChildren={loadingChildren}
           onSelect={onSelect}
           onExpand={onExpand}
+          onExpandAlways={onExpandAlways}
           onToggleFavorite={onToggleFavorite}
         />
       ))}

@@ -118,6 +118,38 @@ pub async fn load_category(
 }
 
 #[tauri::command]
+pub fn search_tracks(
+    query: String,
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<Vec<Track>, String> {
+    let needle = query.trim().to_lowercase();
+    let tracks: Vec<Track> = state
+        .db
+        .all_tracks()
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .filter(|track| {
+            needle.is_empty()
+                || track.title.to_lowercase().contains(&needle)
+                || track.artist.to_lowercase().contains(&needle)
+                || track.author.to_lowercase().contains(&needle)
+                || track.forum.to_lowercase().contains(&needle)
+        })
+        .collect();
+    *state.queue.lock().unwrap() = tracks.clone();
+    *state.current_index.lock().unwrap() = 0;
+    *state.current_forum.lock().unwrap() = Some(Forum::new(
+        format!("Search: {query}"),
+        format!("search://{query}"),
+        None,
+    ));
+    *state.total_pages.lock().unwrap() = 1;
+    let _ = app.emit("tracks-loaded", json!({ "count": tracks.len() }));
+    Ok(tracks)
+}
+
+#[tauri::command]
 pub fn load_liked(
     app: AppHandle,
     state: State<'_, Arc<AppState>>,
@@ -129,6 +161,15 @@ pub fn load_liked(
 
 #[tauri::command]
 pub fn reload_tracks(state: State<'_, Arc<AppState>>) -> Result<Vec<Track>, String> {
+    if state
+        .current_forum
+        .lock()
+        .unwrap()
+        .as_ref()
+        .is_some_and(|forum| forum.url.starts_with("search://"))
+    {
+        return Ok(state.queue.lock().unwrap().clone());
+    }
     if state
         .current_forum
         .lock()

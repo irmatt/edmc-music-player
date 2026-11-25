@@ -211,6 +211,7 @@ fn main() {
             commands::list_children,
             commands::load_category,
             commands::load_liked,
+            commands::search_tracks,
             commands::reload_tracks,
             commands::load_more,
             commands::refresh_category,

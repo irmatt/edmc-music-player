@@ -1,10 +1,11 @@
+import { useState } from "react";
 import type { LoadProgress, UiPreferences } from "../types";
 
 interface ToolbarProps {
   prefs: UiPreferences;
   loading: boolean;
   progress: LoadProgress | null;
-  onRefresh: () => void;
+  onSearch: (query: string) => void;
   onToggleHidden: () => void;
   onArtistFirst: (value: boolean) => void;
   onRowScale: (value: number) => void;
@@ -15,22 +16,43 @@ export function Toolbar({
   prefs,
   loading,
   progress,
-  onRefresh,
+  onSearch,
   onToggleHidden,
   onArtistFirst,
   onRowScale,
   onColumns,
 }: ToolbarProps) {
-  const percent = progress && progress.total > 0
-    ? Math.round((progress.done / progress.total) * 100)
-    : 0;
+  const [query, setQuery] = useState("");
+  const percent =
+    progress && progress.total > 0
+      ? Math.round((progress.done / progress.total) * 100)
+      : 0;
+
   return (
     <div className="toolbar">
-      <button className="tool-button" onClick={onRefresh} disabled={loading}>
-        ↻ <span>Refresh</span>
+      <form
+        className="search-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSearch(query);
+        }}
+      >
+        <span>⌕</span>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search cached tracks"
+          aria-label="Search cached tracks"
+        />
+        <button type="submit">Search</button>
+      </form>
+      <button className="tool-button" onClick={onColumns}>
+        Columns
       </button>
-      <button className="tool-button" onClick={onColumns}>Columns</button>
-      <button className={`tool-button ${prefs.show_hidden ? "pressed" : ""}`} onClick={onToggleHidden}>
+      <button
+        className={`tool-button ${prefs.show_hidden ? "pressed" : ""}`}
+        onClick={onToggleHidden}
+      >
         {prefs.show_hidden ? "Hide hidden" : "Show hidden"}
       </button>
       <label className="toolbar-check">

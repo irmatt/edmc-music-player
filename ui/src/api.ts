@@ -17,6 +17,7 @@ export const api = {
   children: (forum: Forum) => invoke<Forum[]>("list_children", { forum }),
   loadCategory: (forum: Forum) => invoke<TrackBatch>("load_category", { forum }),
   loadLiked: () => invoke<Track[]>("load_liked"),
+  searchTracks: (query: string) => invoke<Track[]>("search_tracks", { query }),
   reloadTracks: () => invoke<Track[]>("reload_tracks"),
   loadMore: () => invoke<TrackBatch>("load_more"),
   refresh: () => invoke<TrackBatch>("refresh_category"),

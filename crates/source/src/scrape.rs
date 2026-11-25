@@ -418,7 +418,52 @@ impl TrackSource for HtmlSource {
     async fn list_children(&self, forum: &Forum) -> Result<Vec<Forum>> {
         let base = Url::parse(&forum.url)?;
         let body = self.http.get_text(&base).await?.body;
-        Self::parse_forum_grid(&body, &base, Some(&forum.url))
+
+        let grid = Self::parse_forum_grid(&body, &base, Some(&forum.url))?;
+        if !grid.is_empty() {
+            return Ok(grid);
+        }
+
+        // Genres like Dubstep and Drum & Bass list their children in the
+        // site's navigation menu rather than in a forum grid.
+        let doc = Html::parse_document(&body);
+        let group_sel = Selector::parse("li[aria-haspopup]")
+            .map_err(|e| Error::Parse(e.to_string()))?;
+        let heading_sel = Selector::parse("a[href='#']")
+            .map_err(|e| Error::Parse(e.to_string()))?;
+        let child_sel = Selector::parse(".grid-container3 li a[href]")
+            .map_err(|e| Error::Parse(e.to_string()))?;
+
+        let mut children = Vec::new();
+        let mut seen = HashSet::new();
+        for group in doc.select(&group_sel) {
+            let heading = group
+                .select(&heading_sel)
+                .next()
+                .map(|el| el.text().collect::<String>().trim().to_owned())
+                .unwrap_or_default();
+            if !heading.eq_ignore_ascii_case(&forum.name) {
+                continue;
+            }
+            for link in group.select(&child_sel) {
+                let Some(href) = link.value().attr("href") else {
+                    continue;
+                };
+                let Ok(url) = base.join(href) else {
+                    continue;
+                };
+                if !url.as_str().contains("/genre/") || url.as_str() == forum.url {
+                    continue;
+                }
+                let name = link.text().collect::<String>().trim().to_owned();
+                if name.is_empty() || !seen.insert(url.as_str().to_owned()) {
+                    continue;
+                }
+                children.push(Forum::new(name, url.to_string(), Some(forum.url.clone())));
+            }
+            break;
+        }
+        Ok(children)
     }
 
     async fn load_pages(

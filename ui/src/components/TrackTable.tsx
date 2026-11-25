@@ -76,6 +76,9 @@ export function TrackTable({
   const dragState = useRef<{ key: string; startX: number; active: boolean } | null>(null);
   const hoverRef = useRef<string | null>(null);
   const suppressClick = useRef(false);
+  const previewRef = useRef<string[] | null>(null);
+  const [previewColumns, setPreviewColumns] = useState<string[] | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const rowHeight = Math.round(38 * prefs.row_scale);
 
   const virtualizer = useVirtualizer({
@@ -221,7 +224,7 @@ export function TrackTable({
     },
   ];
 
-  const ordered = [...prefs.columns]
+  const ordered = [...(previewColumns ?? prefs.columns)]
     .map((key) => columns.find((column) => column.key === key))
     .filter((column): column is ColumnDef => Boolean(column));
   if (prefs.artist_first) {
@@ -252,23 +255,36 @@ export function TrackTable({
         setDraggedColumn(state.key);
       }
       if (!state.active) return;
+      setDragPos({ x: moveEvent.clientX, y: moveEvent.clientY });
       const element = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY);
       const target = element?.closest("[data-column]")?.getAttribute("data-column") ?? null;
       hoverRef.current = target;
       setHoverColumn(target);
+      if (target && target !== state.key) {
+        const base = previewRef.current ?? prefs.columns;
+        const next = [...base];
+        next.splice(next.indexOf(state.key), 1);
+        const destination = next.indexOf(target);
+        if (destination >= 0) {
+          next.splice(destination, 0, state.key);
+          previewRef.current = next;
+          setPreviewColumns(next);
+        }
+      }
     };
 
     const up = () => {
       const state = dragState.current;
-      const target = hoverRef.current;
-      if (state?.active && target && target !== state.key) {
-        const next = prefs.columns.filter((column) => column !== state.key);
-        next.splice(next.indexOf(target), 0, state.key);
-        onReorderColumns(next);
+      if (state?.active) {
+        const next = previewRef.current;
+        if (next) onReorderColumns(next);
         suppressClick.current = true;
       }
       dragState.current = null;
       hoverRef.current = null;
+      previewRef.current = null;
+      setPreviewColumns(null);
+      setDragPos(null);
       setDraggedColumn(null);
       setHoverColumn(null);
       window.removeEventListener("mousemove", move);
@@ -388,6 +404,14 @@ export function TrackTable({
         <div className="table-empty">
           <span>♫</span>
           <p>Choose a genre on the left to load its tracks.</p>
+        </div>
+      )}
+      {draggedColumn && dragPos && (
+        <div
+          className="column-drag-ghost"
+          style={{ left: dragPos.x + 12, top: dragPos.y + 12 }}
+        >
+          {columns.find((column) => column.key === draggedColumn)?.label}
         </div>
       )}
     </div>
