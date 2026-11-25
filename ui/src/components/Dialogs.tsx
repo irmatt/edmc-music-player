@@ -171,6 +171,43 @@ export function PropertiesDialog({ track, onClose }: { track: Track; onClose: ()
   );
 }
 
+export function DataDirDialog({ defaultDir, onChoose, onUseDefault }: {
+  defaultDir: string;
+  onChoose: (path: string) => void;
+  onUseDefault: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const choose = async () => {
+    setBusy(true);
+    try {
+      const selected = await open({ directory: true, defaultPath: defaultDir });
+      if (typeof selected === "string") onChoose(selected);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Shell title="Choose data folder" onClose={() => {}}>
+      <p className="dialog-hint">
+        This portable copy stores its library, cache and settings in:
+      </p>
+      <p className="data-dir-path">{defaultDir}</p>
+      <p className="dialog-hint">
+        You can keep that location or choose another folder. The app will restart
+        once you decide.
+      </p>
+      <div className="data-dir-actions">
+        <button className="secondary" onClick={onUseDefault} disabled={busy}>
+          Use this folder
+        </button>
+        <button className="primary" onClick={choose} disabled={busy}>
+          Choose another folder…
+        </button>
+      </div>
+    </Shell>
+  );
+}
+
 export function AboutDialog({ onClose }: { onClose: () => void }) {
   return (
     <Shell title="About" onClose={onClose}>

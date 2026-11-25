@@ -5,6 +5,7 @@ import { ContextMenu, type ContextAction } from "./components/ContextMenu";
 import {
   AboutDialog,
   ColumnChooser,
+  DataDirDialog,
   PropertiesDialog,
   QualityDialog,
   SettingsDialog,
@@ -561,6 +562,13 @@ export default function App() {
         />
       )}
       {dialog === "about" && <AboutDialog onClose={() => setDialog(null)} />}
+      {state.needs_data_dir && (
+        <DataDirDialog
+          defaultDir={state.data_dir}
+          onUseDefault={() => api.useDefaultDataDir().catch((error) => notify(String(error)))}
+          onChoose={(path) => api.setDataDir(path).catch((error) => notify(String(error)))}
+        />
+      )}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 
 use edmc_audio::AudioEngine;
 use edmc_core::db::Db;
+use edmc_core::paths;
 use edmc_core::Settings;
 use edmc_source::{HtmlSource, HttpClient, PolitenessPolicy};
 use serde_json::json;
@@ -176,6 +177,20 @@ fn main() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            let installed = paths::is_installed();
+            let portable = !installed;
+            let portable_config = paths::load_portable_config();
+            let needs_data_dir = portable && portable_config.is_none();
+            let data_dir = if installed {
+                paths::default_app_dir()
+            } else {
+                portable_config
+                    .and_then(|config| config.data_dir)
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(paths::portable_default_dir)
+            };
+            paths::init_data_root(data_dir.clone());
+
             let db = Arc::new(Db::open()?);
             let settings = db.load_settings()?;
             let prefs = db.load_ui_prefs()?;
@@ -196,6 +211,9 @@ fn main() {
                 engine,
                 settings,
                 prefs,
+                portable,
+                needs_data_dir,
+                data_dir.to_string_lossy().into_owned(),
             ));
             *app_state.queue.lock().unwrap() = db.all_tracks()?;
 
@@ -237,6 +255,8 @@ fn main() {
             commands::save_ui_prefs,
             commands::get_settings,
             commands::update_settings,
+            commands::set_data_dir,
+            commands::use_default_data_dir,
             commands::clear_cache,
             commands::watch_sign_in,
             commands::sign_out,

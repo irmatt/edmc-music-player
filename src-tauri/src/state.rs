@@ -29,6 +29,9 @@ pub struct AppState {
     pub total_pages: Mutex<u32>,
     pub shuffle: AtomicBool,
     pub repeat: Mutex<RepeatMode>,
+    pub portable: bool,
+    pub needs_data_dir: bool,
+    pub data_dir: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -49,6 +52,9 @@ pub struct FrontendState {
     pub loaded_pages: Vec<u32>,
     pub total_pages: u32,
     pub liked_count: usize,
+    pub portable: bool,
+    pub needs_data_dir: bool,
+    pub data_dir: String,
 }
 
 impl AppState {
@@ -59,6 +65,9 @@ impl AppState {
         engine: Arc<AudioEngine>,
         settings: Settings,
         prefs: UiPreferences,
+        portable: bool,
+        needs_data_dir: bool,
+        data_dir: String,
     ) -> Self {
         Self {
             db,
@@ -74,6 +83,9 @@ impl AppState {
             total_pages: Mutex::new(1),
             shuffle: AtomicBool::new(false),
             repeat: Mutex::new(RepeatMode::Off),
+            portable,
+            needs_data_dir,
+            data_dir,
         }
     }
 
@@ -114,6 +126,9 @@ impl AppState {
                 .all_tracks()
                 .map(|tracks| tracks.iter().filter(|track| track.thanked).count())
                 .unwrap_or(0),
+            portable: self.portable,
+            needs_data_dir: self.needs_data_dir,
+            data_dir: self.data_dir.clone(),
         }
     }
 }

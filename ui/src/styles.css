@@ -1131,6 +1131,23 @@ p {
   font-weight: 600;
 }
 
+.data-dir-path {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  padding: 9px 10px;
+  margin-bottom: 12px;
+  word-break: break-all;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+}
+
+.data-dir-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 .about-title {
   font-size: 18px;
   font-weight: 600;

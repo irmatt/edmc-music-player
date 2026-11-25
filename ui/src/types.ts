@@ -95,6 +95,9 @@ export interface FrontendState {
   loaded_pages: number[];
   total_pages: number;
   liked_count: number;
+  portable: boolean;
+  needs_data_dir: boolean;
+  data_dir: string;
 }
 
 export interface TrackBatch {

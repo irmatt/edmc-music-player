@@ -611,6 +611,28 @@ pub fn save_ui_prefs(
 }
 
 #[tauri::command]
+pub fn set_data_dir(path: String, app: AppHandle) -> Result<(), String> {
+    edmc_core::paths::save_portable_config(&edmc_core::paths::PortableConfig {
+        data_dir: Some(path),
+    })
+    .map_err(|e| e.to_string())?;
+    app.restart();
+}
+
+#[tauri::command]
+pub fn use_default_data_dir(app: AppHandle) -> Result<(), String> {
+    edmc_core::paths::save_portable_config(&edmc_core::paths::PortableConfig {
+        data_dir: Some(
+            edmc_core::paths::portable_default_dir()
+                .to_string_lossy()
+                .into_owned(),
+        ),
+    })
+    .map_err(|e| e.to_string())?;
+    app.restart();
+}
+
+#[tauri::command]
 pub fn get_settings(state: State<'_, Arc<AppState>>) -> Settings {
     state.settings.lock().unwrap().clone()
 }

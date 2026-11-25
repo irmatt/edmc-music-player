@@ -46,6 +46,8 @@ export const api = {
   settings: () => invoke<Settings>("get_settings"),
   updateSettings: (settings: Settings) => invoke<void>("update_settings", { settings }),
   clearCache: () => invoke<void>("clear_cache"),
+  setDataDir: (path: string) => invoke<void>("set_data_dir", { path }),
+  useDefaultDataDir: () => invoke<void>("use_default_data_dir"),
   signIn: async () => {
     const existing = await WebviewWindow.getByLabel("signin");
     if (existing) {

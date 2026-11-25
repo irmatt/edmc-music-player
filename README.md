@@ -71,6 +71,17 @@ Run the CLI from the **repository root** — from `ui/` it cannot find
 
 For development, use `ui\node_modules\.bin\tauri.cmd dev` from the root.
 
+## Portable build
+
+The standalone `edmc-music-player.exe` is portable. It keeps its library,
+cache and settings in an `EDMC Music Player Data` folder beside the exe. On the
+first launch it asks whether to keep that folder or choose another one; the
+choice is saved to `edmc-music-player.json` next to the exe.
+
+The installer creates an `installed.flag` marker and uses `%LOCALAPPDATA%`
+instead, so the two builds do not share data. The NSIS installer also includes
+a normal uninstall entry under Apps & Features.
+
 ## Signing in
 
 Use **Sign in to like tracks** in the sidebar. A window opens on
