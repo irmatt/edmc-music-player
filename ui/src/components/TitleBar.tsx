@@ -80,6 +80,7 @@ export function TitleBar({
           </div>
         ))}
       </div>
+      <div className="titlebar-drag-region" data-tauri-drag-region />
       <div className="window-controls">
         <button
           aria-label="Minimise"

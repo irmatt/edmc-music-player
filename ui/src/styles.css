@@ -145,6 +145,13 @@ p {
   background: var(--accent);
 }
 
+.titlebar-drag-region {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  cursor: default;
+}
+
 .window-controls {
   margin-left: auto;
   display: flex;
