@@ -62,6 +62,13 @@ export default function App() {
     return next;
   }, []);
 
+  useEffect(() => {
+    if (!state) return;
+    const theme = state.settings.theme;
+    document.documentElement.setAttribute("data-theme", theme);
+    document.body.setAttribute("data-theme", theme);
+  }, [state?.settings.theme]);
+
   const savePrefs = useCallback(async (next: UiPreferences) => {
     setState((current) => (current ? { ...current, prefs: next } : current));
     await api.savePrefs(next);
@@ -172,6 +179,18 @@ export default function App() {
 
   const selectForum = useCallback(async (forum: Forum) => {
     setSelected(forum);
+    if (forum.url.startsWith("liked://")) {
+      setLoading(true);
+      try {
+        await api.loadLiked();
+        await refresh();
+      } catch (error) {
+        notify(String(error));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     if (forum.children.length > 0) {
       setState((current) => current ? { ...current, tracks: [], current_forum: forum } : current);
       if (state?.prefs.collapsed.includes(forum.url)) {
@@ -333,13 +352,21 @@ export default function App() {
   }
 
   const prefs = state.prefs;
-  const hasMore = state.total_pages > (state.loaded_pages.at(-1) ?? 0);
+  const isLikedView = state.current_forum?.url.startsWith("liked://") ?? false;
+  const hasMore = !isLikedView && state.total_pages > (state.loaded_pages.at(-1) ?? 0);
   const activeId = state.tracks[state.current_index]?.id;
   const activeSortedIndex = activeId ? sortedTracks.findIndex((track) => track.id === activeId) : -1;
 
   return (
     <div className="shell">
       <TitleBar
+        theme={state.settings.theme}
+        onTheme={(theme) => {
+          const next = { ...state.settings, theme };
+          api.updateSettings(next)
+            .then(() => setState({ ...state, settings: next }))
+            .catch((error) => notify(String(error)));
+        }}
         onSettings={() => setDialog("settings")}
         onColumns={() => setDialog("columns")}
         onShowHidden={toggleHidden}
@@ -353,6 +380,8 @@ export default function App() {
           <LibraryTree
             tree={tree}
             prefs={prefs}
+            likedCount={state.liked_count}
+            likedSelected={isLikedView}
             selectedUrl={state.current_forum?.url ?? selected?.url ?? null}
             loadingChildren={loadingChildren}
             onSelect={selectForum}
@@ -388,7 +417,7 @@ export default function App() {
               <h1>{state.current_forum?.name ?? selected?.name ?? "Music"}</h1>
               <span>{state.tracks.length} tracks · {state.loaded_pages.length} pages loaded</span>
             </div>
-            <button className="tool-button" onClick={doRefresh} disabled={loading || !selected}>↻ Refresh</button>
+            <button className="tool-button" onClick={doRefresh} disabled={loading || !selected || isLikedView}>↻ Refresh</button>
           </div>
           <Toolbar
             prefs={prefs}
@@ -409,6 +438,13 @@ export default function App() {
             hasMore={hasMore}
             loading={loading}
             onLoadMore={loadMore}
+            onReorderColumns={(columns) => savePrefs({ ...prefs, columns })}
+            onResizeColumn={(key, width) =>
+              savePrefs({
+                ...prefs,
+                column_widths: { ...prefs.column_widths, [key]: width },
+              })
+            }
             onSort={(column) => savePrefs({ ...prefs, sort_by: column, descending: prefs.sort_by === column ? !prefs.descending : true })}
             onPlay={(index) => {
               const track = sortedTracks[index];
@@ -419,23 +455,23 @@ export default function App() {
             onDownload={download}
             onContextMenu={(event, track) => setContext({ x: event.clientX, y: event.clientY, track })}
           />
-          <TransportBar
-            state={state}
-            onToggle={() => api.toggle()}
-            onNext={() => api.next().catch((error) => notify(String(error)))}
-            onPrevious={() => api.previous().catch((error) => notify(String(error)))}
-            onSeek={(seconds) => api.seek(seconds).catch((error) => notify(String(error)))}
-            onVolume={(volume) => api.setVolume(volume).then(refresh)}
-            onShuffle={(shuffle) => api.setShuffle(shuffle).then(() => setState({ ...state, shuffle }))}
-            onRepeat={async () => {
-              const order = ["off", "all", "one"] as const;
-              const next = order[(order.indexOf(state.repeat) + 1) % order.length];
-              await api.setRepeat(next);
-              setState({ ...state, repeat: next });
-            }}
-          />
         </main>
       </div>
+      <TransportBar
+        state={state}
+        onToggle={() => api.toggle()}
+        onNext={() => api.next().catch((error) => notify(String(error)))}
+        onPrevious={() => api.previous().catch((error) => notify(String(error)))}
+        onSeek={(seconds) => api.seek(seconds).catch((error) => notify(String(error)))}
+        onVolume={(volume) => api.setVolume(volume).then(refresh)}
+        onShuffle={(shuffle) => api.setShuffle(shuffle).then(() => setState({ ...state, shuffle }))}
+        onRepeat={async () => {
+          const order = ["off", "all", "one"] as const;
+          const next = order[(order.indexOf(state.repeat) + 1) % order.length];
+          await api.setRepeat(next);
+          setState({ ...state, repeat: next });
+        }}
+      />
 
       {context && (
         <ContextMenu

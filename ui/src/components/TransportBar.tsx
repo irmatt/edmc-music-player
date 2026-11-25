@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { FrontendState } from "../types";
 import { Waveform } from "./Waveform";
 
@@ -29,17 +30,23 @@ export function TransportBar({
   onShuffle,
   onRepeat,
 }: TransportBarProps) {
+  const [artOpen, setArtOpen] = useState(false);
   const track = state.tracks[state.current_index];
+  const artwork = track?.art_url || track?.thumb_url || null;
   return (
     <div className="transport-bar">
       <div className="transport-track">
-        <div className="transport-thumb">
-          {track?.art_url || track?.thumb_url ? (
-            <img src={track.art_url ?? track.thumb_url ?? ""} alt="" />
+        <button
+          className="transport-thumb"
+          title="Show album art"
+          onClick={() => artwork && setArtOpen(true)}
+        >
+          {artwork ? (
+            <img src={artwork} alt="Album art" />
           ) : (
             <span>♫</span>
           )}
-        </div>
+        </button>
         <div className="transport-meta">
           <span className="transport-title">{track?.title ?? "Nothing playing"}</span>
           <span className="transport-artist">{track?.artist || track?.forum || "EDMC Music Player"}</span>
@@ -87,6 +94,15 @@ export function TransportBar({
           </div>
         </div>
       </div>
+      {artOpen && artwork && (
+        <div className="art-overlay" onClick={() => setArtOpen(false)}>
+          <div className="art-dialog" onClick={(event) => event.stopPropagation()}>
+            <img src={artwork} alt="Album art" />
+            <div className="art-caption">{track?.title}</div>
+            <button onClick={() => setArtOpen(false)}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

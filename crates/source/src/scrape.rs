@@ -394,8 +394,23 @@ impl TrackSource for HtmlSource {
             )]);
         };
         let html = music.html();
-        let children = Self::parse_forum_grid(&html, &base, Some("https://edmc.to/genre/music-6/"))?;
+        let mut children =
+            Self::parse_forum_grid(&html, &base, Some("https://edmc.to/genre/music-6/"))?;
         let mut root = Forum::new("Music".into(), "https://edmc.to/genre/music-6/".into(), None);
+        let mut urls: HashSet<String> = children.iter().map(|forum| forum.url.clone()).collect();
+        let extras = [
+            ("Drum & Bass", "https://edmc.to/genre/drum-bass-37/"),
+            ("Dubstep", "https://edmc.to/genre/dubstep-31/"),
+        ];
+        for (name, url) in extras {
+            if urls.insert(url.to_owned()) {
+                children.push(Forum::new(
+                    name.into(),
+                    url.into(),
+                    Some(root.url.clone()),
+                ));
+            }
+        }
         root.children = children;
         Ok(vec![root])
     }

@@ -36,6 +36,27 @@ fn progress_emitter(app: &AppHandle) -> edmc_source::ProgressFn {
     })
 }
 
+const LIKED_URL: &str = "liked://tracks";
+
+fn liked_forum() -> Forum {
+    Forum::new("Liked Tracks".into(), LIKED_URL.into(), None)
+}
+
+fn set_liked_queue(state: &AppState) -> Result<Vec<Track>, String> {
+    let tracks: Vec<Track> = state
+        .db
+        .all_tracks()
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .filter(|track| track.thanked)
+        .collect();
+    *state.queue.lock().unwrap() = tracks.clone();
+    *state.current_index.lock().unwrap() = 0;
+    *state.current_forum.lock().unwrap() = Some(liked_forum());
+    *state.total_pages.lock().unwrap() = 1;
+    Ok(tracks)
+}
+
 fn reload_queue(state: &AppState, forum: &Forum) -> Result<Vec<Track>, String> {
     let show_hidden = state.prefs.lock().unwrap().show_hidden;
     state
@@ -97,7 +118,26 @@ pub async fn load_category(
 }
 
 #[tauri::command]
+pub fn load_liked(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<Vec<Track>, String> {
+    let tracks = set_liked_queue(&state)?;
+    let _ = app.emit("tracks-loaded", json!({ "count": tracks.len() }));
+    Ok(tracks)
+}
+
+#[tauri::command]
 pub fn reload_tracks(state: State<'_, Arc<AppState>>) -> Result<Vec<Track>, String> {
+    if state
+        .current_forum
+        .lock()
+        .unwrap()
+        .as_ref()
+        .is_some_and(|forum| forum.url.starts_with("liked://"))
+    {
+        return set_liked_queue(&state);
+    }
     let forum = state
         .current_forum
         .lock()
@@ -121,6 +161,15 @@ pub async fn load_more(
         .unwrap()
         .clone()
         .ok_or_else(|| "Choose a category first".to_string())?;
+    if forum.url.starts_with("liked://") {
+        let tracks = set_liked_queue(&shared)?;
+        return Ok(TrackBatch {
+            tracks,
+            loaded_pages: Vec::new(),
+            total_pages: 1,
+            errors: Vec::new(),
+        });
+    }
     let loaded = shared.db.loaded_pages(&forum.url).map_err(|e| e.to_string())?;
     // Fill the first gap left by a failed page before moving forward.
     let start = (1u32..)
@@ -155,6 +204,15 @@ pub async fn refresh_category(
         .unwrap()
         .clone()
         .ok_or_else(|| "Choose a category first".to_string())?;
+    if forum.url.starts_with("liked://") {
+        let tracks = set_liked_queue(&shared)?;
+        return Ok(TrackBatch {
+            tracks,
+            loaded_pages: Vec::new(),
+            total_pages: 1,
+            errors: Vec::new(),
+        });
+    }
     let batch = shared
         .source
         .refresh_page_one(&forum, progress_emitter(&app))

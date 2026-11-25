@@ -35,23 +35,23 @@ export function Waveform({
     const played = styles.getPropertyValue("--wave-played").trim() || "#6366f1";
     const rest = styles.getPropertyValue("--wave-rest").trim() || "#4b5563";
 
-    const bars = peaks.length || 160;
-    const gap = compact ? 1 : 2;
-    const barWidth = Math.max(1, width / bars - gap);
+    const gap = compact ? 1 : 1;
+    const barWidth = compact ? 2 : 2;
+    const bars = Math.max(1, Math.floor(width / (barWidth + gap)));
     const progress = duration > 0 ? Math.min(1, position / duration) : 0;
     const middle = height / 2;
 
     for (let i = 0; i < bars; i += 1) {
-      const value = peaks[i] ?? 0.04;
-      const barHeight = Math.max(2, value * (height - 4));
+      const index = Math.min(
+        peaks.length - 1,
+        Math.floor((i * peaks.length) / bars),
+      );
+      const value = peaks.length ? peaks[index] : 0.12;
+      const half = Math.max(1, value * (middle - 3));
       const x = i * (barWidth + gap);
       ctx.fillStyle = i / bars <= progress ? played : rest;
-      ctx.fillRect(x, middle - barHeight / 2, barWidth, barHeight);
-    }
-
-    if (progress > 0) {
-      ctx.fillStyle = played;
-      ctx.fillRect(progress * width - 1, 0, 2, height);
+      ctx.fillRect(x, middle - half - 1, barWidth, half);
+      ctx.fillRect(x, middle + 1, barWidth, half);
     }
   }, [peaks, position, duration, compact]);
 

@@ -4,6 +4,8 @@ import type { Forum, UiPreferences } from "../types";
 interface LibraryTreeProps {
   tree: Forum[];
   prefs: UiPreferences;
+  likedCount: number;
+  likedSelected: boolean;
   selectedUrl: string | null;
   loadingChildren: Set<string>;
   onSelect: (forum: Forum) => void;
@@ -29,7 +31,16 @@ function Node({
   onSelect,
   onExpand,
   onToggleFavorite,
-}: Omit<LibraryTreeProps, "tree" | "onReorderFavorite"> & { forum: Forum; depth: number }) {
+}: {
+  forum: Forum;
+  depth: number;
+  prefs: UiPreferences;
+  selectedUrl: string | null;
+  loadingChildren: Set<string>;
+  onSelect: (forum: Forum) => void;
+  onExpand: (forum: Forum) => void;
+  onToggleFavorite: (forum: Forum) => void;
+}) {
   const expanded = forum.children.length > 0 && !prefs.collapsed.includes(forum.url);
   const hasChildren = forum.children.length > 0 || depth < 2;
   const favorite = prefs.favorites.includes(forum.url);
@@ -62,7 +73,9 @@ function Node({
       </div>
       {expanded && forum.children.length > 0 && (
         <div className="tree-children">
-          {forum.children.map((child) => (
+          {[...forum.children]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((child) => (
             <Node
               key={child.url}
               forum={child}
@@ -84,6 +97,8 @@ function Node({
 export function LibraryTree({
   tree,
   prefs,
+  likedCount,
+  likedSelected,
   selectedUrl,
   loadingChildren,
   onSelect,
@@ -120,8 +135,22 @@ export function LibraryTree({
           </div>
         ))}
       </div>
+      <div className="tree-section-title">Like tracks</div>
+      <div
+        className={`liked-row ${likedSelected ? "selected" : ""}`}
+        style={{ paddingLeft: 26 }}
+        onClick={() =>
+          onSelect({ name: "Liked Tracks", url: "liked://tracks", parent_url: null, children: [] })
+        }
+      >
+        <span className="liked-star">♥</span>
+        <span className="tree-label">Liked Tracks</span>
+        <span className="liked-count">{likedCount}</span>
+      </div>
       <div className="tree-section-title">Library</div>
-      {tree.map((forum) => (
+      {[...tree]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((forum) => (
         <Node
           key={forum.url}
           forum={forum}

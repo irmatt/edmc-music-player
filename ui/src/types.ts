@@ -72,6 +72,7 @@ export interface UiPreferences {
   sort_by: string;
   descending: boolean;
   columns: string[];
+  column_widths: Record<string, number>;
   favorites: string[];
   collapsed: string[];
 }
@@ -91,6 +92,7 @@ export interface FrontendState {
   current_forum: Forum | null;
   loaded_pages: number[];
   total_pages: number;
+  liked_count: number;
 }
 
 export interface TrackBatch {

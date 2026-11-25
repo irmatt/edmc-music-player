@@ -195,27 +195,26 @@ pub fn analyze(path: &Path) -> Result<(f64, Vec<f32>)> {
     let sample_rate = decoder.sample_rate().get() as f64;
     let channels = decoder.channels().get() as f64;
 
-    const FRAMES_PER_BUCKET: u64 = 256;
+    const FRAMES_PER_BUCKET: u64 = 128;
     let mut coarse: Vec<f32> = Vec::new();
-    let mut loudest = 0f32;
+    let mut energy = 0f64;
     let mut in_bucket = 0u64;
     let mut samples = 0u64;
 
     for sample in decoder {
-        let amplitude = sample.abs();
-        if amplitude > loudest {
-            loudest = amplitude;
-        }
+        // RMS gives a far more detailed shape than a per-bucket maximum on
+        // modern, loudness-normalised masters, which otherwise look flat.
+        energy += (sample as f64) * (sample as f64);
         in_bucket += 1;
         samples += 1;
         if in_bucket >= FRAMES_PER_BUCKET {
-            coarse.push(loudest);
-            loudest = 0.0;
+            coarse.push((energy / in_bucket as f64).sqrt() as f32);
+            energy = 0.0;
             in_bucket = 0;
         }
     }
     if in_bucket > 0 {
-        coarse.push(loudest);
+        coarse.push((energy / in_bucket as f64).sqrt() as f32);
     }
 
     let duration = if sample_rate > 0.0 && channels > 0.0 {
@@ -231,15 +230,14 @@ pub fn analyze(path: &Path) -> Result<(f64, Vec<f32>)> {
             let end = ((index + 1) * coarse.len() / PEAK_COUNT)
                 .max(start + 1)
                 .min(coarse.len());
-            let maximum = coarse[start..end]
-                .iter()
-                .copied()
-                .fold(0f32, |a, b| a.max(b));
-            peaks[index] = maximum;
+            let sum: f32 = coarse[start..end].iter().sum();
+            peaks[index] = sum / (end - start) as f32;
         }
         let peak = peaks.iter().copied().fold(0f32, |a, b| a.max(b)).max(1e-4);
         for value in &mut peaks {
-            *value = (*value / peak).clamp(0.0, 1.0);
+            // Leave headroom so the waveform keeps its dynamics instead of
+            // looking like a solid block of maximum-height bars.
+            *value = ((*value / peak) * 0.72).clamp(0.0, 1.0);
         }
     }
 

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -136,6 +138,7 @@ pub struct UiPreferences {
     pub sort_by: String,
     pub descending: bool,
     pub columns: Vec<String>,
+    pub column_widths: BTreeMap<String, u32>,
     pub favorites: Vec<String>,
     pub collapsed: Vec<String>,
 }
@@ -162,6 +165,7 @@ impl Default for UiPreferences {
                 "like".into(),
                 "download".into(),
             ],
+            column_widths: BTreeMap::new(),
             favorites: Vec::new(),
             collapsed: Vec::new(),
         }

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 interface TitleBarProps {
+  theme: string;
+  onTheme: (theme: string) => void;
   onSettings: () => void;
   onColumns: () => void;
   onShowHidden: () => void;
@@ -15,6 +17,8 @@ const menus = ["View", "Play", "Help"] as const;
 type Menu = (typeof menus)[number];
 
 export function TitleBar({
+  theme,
+  onTheme,
   onSettings,
   onColumns,
   onShowHidden,
@@ -60,6 +64,22 @@ export function TitleBar({
               <div className="menu-popup">
                 {menu === "View" && (
                   <>
+                    <div className="menu-section-title">Theme</div>
+                    {[
+                      ["wmp11", "Grey"],
+                      ["oled", "OLED black"],
+                      ["light", "Light"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        onClick={() => choose(() => onTheme(value))}
+                        className={theme === value ? "theme-active" : ""}
+                      >
+                        {theme === value ? "✓ " : ""}
+                        {label}
+                      </button>
+                    ))}
+                    <div className="menu-separator" />
                     <button onClick={() => choose(onColumns)}>Choose columns…</button>
                     <button onClick={() => choose(onShowHidden)}>Show / hide hidden tracks</button>
                     <button onClick={() => choose(onSettings)}>Settings…</button>

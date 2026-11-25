@@ -46,6 +46,7 @@ pub struct FrontendState {
     pub current_forum: Option<Forum>,
     pub loaded_pages: Vec<u32>,
     pub total_pages: u32,
+    pub liked_count: usize,
 }
 
 impl AppState {
@@ -104,6 +105,11 @@ impl AppState {
             current_forum,
             loaded_pages,
             total_pages,
+            liked_count: self
+                .db
+                .all_tracks()
+                .map(|tracks| tracks.iter().filter(|track| track.thanked).count())
+                .unwrap_or(0),
         }
     }
 }
