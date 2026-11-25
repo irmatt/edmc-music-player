@@ -536,8 +536,8 @@ pub fn clear_cache(state: State<'_, Arc<AppState>>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn sign_in(app: AppHandle, state: State<'_, Arc<AppState>>) -> Result<(), String> {
-    auth::sign_in(&app, &Arc::clone(&state))
+pub fn watch_sign_in(app: AppHandle, state: State<'_, Arc<AppState>>) {
+    auth::watch_sign_in(&app, &Arc::clone(&state));
 }
 
 #[tauri::command]

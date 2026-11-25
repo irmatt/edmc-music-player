@@ -1,49 +1,42 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
-use url::Url;
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::state::AppState;
 
-const LOGIN_URL: &str = "https://edmc.to/login/";
+static WATCHING: AtomicBool = AtomicBool::new(false);
 
-/// Open a real login window. The password is typed into edmc.to's own page;
-/// the app never sees it and only keeps the resulting session cookies.
-pub fn sign_in(app: &AppHandle, state: &Arc<AppState>) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("signin") {
-        let _ = window.set_focus();
-        return Ok(());
+
+/// The login window is created from the frontend with Tauri's stable
+/// `WebviewWindow` API. This side watches it and captures the session cookies
+/// once the forum redirects away from the login page.
+pub fn watch_sign_in(app: &AppHandle, state: &Arc<AppState>) {
+    if WATCHING.swap(true, Ordering::SeqCst) {
+        return;
     }
-
-    let login = Url::parse(LOGIN_URL).map_err(|e| e.to_string())?;
-    WebviewWindowBuilder::new(app, "signin", WebviewUrl::External(login))
-        .title("Sign in to EDMC")
-        .inner_size(520.0, 720.0)
-        .resizable(true)
-        .build()
-        .map_err(|e| e.to_string())?;
 
     let app_handle = app.clone();
     let state_handle = state.clone();
-
     tauri::async_runtime::spawn(async move {
         for _ in 0..300 {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
             let Some(window) = app_handle.get_webview_window("signin") else {
-                break;
+                continue;
             };
             let Ok(url) = window.url() else {
                 continue;
             };
             let address = url.as_str();
+
             if address.contains("/login/") || !address.starts_with("https://edmc.to/") {
                 continue;
             }
 
-            // On Windows, reading cookies inside a synchronous Tauri command
-            // deadlocks; a blocking task keeps it off that thread.
+            // Reading cookies in a synchronous Tauri command deadlocks on
+            // Windows, so use a blocking task on a separate thread.
             let cookie_window = window.clone();
             let captured = tokio::task::spawn_blocking(move || cookie_window.cookies()).await;
             let Ok(Ok(cookies)) = captured else {
@@ -69,9 +62,8 @@ pub fn sign_in(app: &AppHandle, state: &Arc<AppState>) -> Result<(), String> {
             let _ = window.close();
             break;
         }
+        WATCHING.store(false, Ordering::SeqCst);
     });
-
-    Ok(())
 }
 
 pub fn sign_out(app: &AppHandle, state: &Arc<AppState>) -> Result<(), String> {

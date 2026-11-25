@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type {
   DownloadOutcome,
   Forum,
@@ -43,6 +44,22 @@ export const api = {
   settings: () => invoke<Settings>("get_settings"),
   updateSettings: (settings: Settings) => invoke<void>("update_settings", { settings }),
   clearCache: () => invoke<void>("clear_cache"),
-  signIn: () => invoke<void>("sign_in"),
+  signIn: async () => {
+    const existing = await WebviewWindow.getByLabel("signin");
+    if (existing) {
+      await existing.setFocus();
+      return;
+    }
+    new WebviewWindow("signin", {
+      url: "https://edmc.to/login/",
+      title: "Sign in to EDMC",
+      width: 560,
+      height: 760,
+      center: true,
+      resizable: true,
+      decorations: true,
+    });
+    await invoke("watch_sign_in");
+  },
   signOut: () => invoke<void>("sign_out"),
 };

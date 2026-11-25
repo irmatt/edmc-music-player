@@ -236,7 +236,7 @@ fn main() {
             commands::get_settings,
             commands::update_settings,
             commands::clear_cache,
-            commands::sign_in,
+            commands::watch_sign_in,
             commands::sign_out,
         ])
         .run(tauri::generate_context!())

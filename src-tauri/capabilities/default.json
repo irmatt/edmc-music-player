@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Main player window",
-  "windows": ["main"],
+  "windows": ["main", "signin"],
   "permissions": [
     "core:default",
     "core:window:allow-close",
@@ -11,6 +11,7 @@
     "core:window:allow-set-focus",
     "core:window:allow-minimize",
     "core:window:allow-start-dragging",
+    "core:webview:allow-create-webview-window",
     "core:window:allow-maximize",
     "core:window:allow-unmaximize",
     "core:window:allow-is-maximized",
