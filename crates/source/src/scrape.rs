@@ -273,6 +273,8 @@ impl HtmlSource {
                     total_pages = total_pages.max(pages);
                     processed += page_tracks.len();
                     progress(processed, expected, &format!("Page {page}"));
+                    self.db.upsert_listing_tracks(&page_tracks)?;
+                    on_page(&page_tracks);
                     tracks.append(&mut page_tracks);
                     loaded.push(page);
                 }
@@ -284,10 +286,6 @@ impl HtmlSource {
             }
         }
 
-        if !tracks.is_empty() {
-            self.db.upsert_listing_tracks(&tracks)?;
-            on_page(&tracks);
-        }
         if !loaded.is_empty() {
             self.db.mark_pages_loaded(&forum.url, &loaded)?;
         }
@@ -431,7 +429,7 @@ impl TrackSource for HtmlSource {
 
         let mut grid = Self::parse_forum_grid(&body, &base, Some(&forum.url))?;
         if !grid.is_empty() {
-            grid.retain(|child| !duplicate_name(child, forum));
+            mark_same_name_leaf(&mut grid, &forum.name);
             return Ok(grid);
         }
 
@@ -474,7 +472,7 @@ impl TrackSource for HtmlSource {
             }
             break;
         }
-        children.retain(|child| !duplicate_name(child, forum));
+        mark_same_name_leaf(&mut children, &forum.name);
         Ok(children)
     }
 
@@ -542,11 +540,14 @@ impl TrackSource for HtmlSource {
     }
 }
 
-/// A child with the same name but a different forum ID is a duplicate genre,
-/// not a self-link. The true self-link keeps the parent's URL.
-fn duplicate_name(child: &Forum, parent: &Forum) -> bool {
-    child.name.eq_ignore_ascii_case(&parent.name)
-        && child.url.trim_end_matches('/') != parent.url.trim_end_matches('/')
+/// Same-name children are kept as a leaf entry for the parent's own tracks,
+/// but marked so the tree never tries to expand them into another copy.
+fn mark_same_name_leaf(children: &mut [Forum], parent_name: &str) {
+    for child in children {
+        if child.name.eq_ignore_ascii_case(parent_name) {
+            child.parent_url = Some(child.url.clone());
+        }
+    }
 }
 
 fn absolute_url(base: &Url, src: &str) -> Option<Url> {
