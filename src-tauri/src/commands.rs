@@ -36,6 +36,24 @@ fn progress_emitter(app: &AppHandle) -> edmc_source::ProgressFn {
     })
 }
 
+/// Appends each freshly loaded page to the visible list as soon as it arrives.
+fn page_emitter(app: &AppHandle, state: &Arc<AppState>) -> edmc_source::PageFn {
+    let emitter = app.clone();
+    let shared = Arc::clone(state);
+    Arc::new(move |tracks: &[Track]| {
+        let count = {
+            let mut queue = shared.queue.lock().unwrap();
+            for track in tracks {
+                if !queue.iter().any(|item| item.id == track.id) {
+                    queue.push(track.clone());
+                }
+            }
+            queue.len()
+        };
+        let _ = emitter.emit("tracks-loaded", json!({ "count": count }));
+    })
+}
+
 const LIKED_URL: &str = "liked://tracks";
 
 fn liked_forum() -> Forum {
@@ -98,12 +116,19 @@ pub async fn load_category(
     state: State<'_, Arc<AppState>>,
 ) -> Result<TrackBatch, String> {
     let shared = Arc::clone(&state);
+    *shared.current_forum.lock().unwrap() = Some(forum.clone());
+    shared.queue.lock().unwrap().clear();
     let batch = shared
         .source
-        .load_pages(&forum, 1, 5, progress_emitter(&app))
+        .load_pages(
+            &forum,
+            1,
+            5,
+            progress_emitter(&app),
+            page_emitter(&app, &shared),
+        )
         .await
         .map_err(|error| error.to_string())?;
-    *shared.current_forum.lock().unwrap() = Some(forum.clone());
     *shared.total_pages.lock().unwrap() = batch.total_pages.max(1);
     let tracks = reload_queue(&shared, &forum)?;
     *shared.queue.lock().unwrap() = tracks.clone();
@@ -218,7 +243,13 @@ pub async fn load_more(
         .unwrap_or_else(|| loaded.iter().max().copied().unwrap_or(0) + 1);
     let batch = shared
         .source
-        .load_pages(&forum, start, 5, progress_emitter(&app))
+        .load_pages(
+            &forum,
+            start,
+            5,
+            progress_emitter(&app),
+            page_emitter(&app, &shared),
+        )
         .await
         .map_err(|error| error.to_string())?;
     *shared.total_pages.lock().unwrap() = batch.total_pages.max(1);
@@ -254,9 +285,14 @@ pub async fn refresh_category(
             errors: Vec::new(),
         });
     }
+    shared.queue.lock().unwrap().clear();
     let batch = shared
         .source
-        .refresh_page_one(&forum, progress_emitter(&app))
+        .refresh_page_one(
+            &forum,
+            progress_emitter(&app),
+            page_emitter(&app, &shared),
+        )
         .await
         .map_err(|error| error.to_string())?;
     *shared.total_pages.lock().unwrap() = batch.total_pages.max(1);

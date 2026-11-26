@@ -14,6 +14,7 @@ const HOME: &str = "https://edmc.to/";
 const PAGE_SIZE: u32 = 50;
 
 pub type ProgressFn = Arc<dyn Fn(usize, usize, &str) + Send + Sync>;
+pub type PageFn = Arc<dyn Fn(&[Track]) + Send + Sync>;
 
 #[async_trait]
 pub trait TrackSource: Send + Sync {
@@ -25,8 +26,14 @@ pub trait TrackSource: Send + Sync {
         start_page: u32,
         page_count: u32,
         progress: ProgressFn,
+        on_page: PageFn,
     ) -> Result<TrackBatch>;
-    async fn refresh_page_one(&self, forum: &Forum, progress: ProgressFn) -> Result<TrackBatch>;
+    async fn refresh_page_one(
+        &self,
+        forum: &Forum,
+        progress: ProgressFn,
+        on_page: PageFn,
+    ) -> Result<TrackBatch>;
     async fn resolve_track(&self, track: &Track) -> Result<Track>;
     async fn qualities(&self, track: &Track) -> Result<Vec<QualityVariant>>;
     async fn send_thanks(&self, reaction_url: &str) -> Result<()>;
@@ -245,6 +252,7 @@ impl HtmlSource {
         start_page: u32,
         page_count: u32,
         progress: ProgressFn,
+        on_page: PageFn,
         force_first: bool,
     ) -> Result<TrackBatch> {
         let mut tracks = Vec::new();
@@ -278,6 +286,7 @@ impl HtmlSource {
 
         if !tracks.is_empty() {
             self.db.upsert_listing_tracks(&tracks)?;
+            on_page(&tracks);
         }
         if !loaded.is_empty() {
             self.db.mark_pages_loaded(&forum.url, &loaded)?;
@@ -420,8 +429,9 @@ impl TrackSource for HtmlSource {
         let base = Url::parse(&forum.url)?;
         let body = self.http.get_text(&base).await?.body;
 
-        let grid = Self::parse_forum_grid(&body, &base, Some(&forum.url))?;
+        let mut grid = Self::parse_forum_grid(&body, &base, Some(&forum.url))?;
         if !grid.is_empty() {
+            grid.retain(|child| !duplicate_name(child, forum));
             return Ok(grid);
         }
 
@@ -464,6 +474,7 @@ impl TrackSource for HtmlSource {
             }
             break;
         }
+        children.retain(|child| !duplicate_name(child, forum));
         Ok(children)
     }
 
@@ -473,13 +484,26 @@ impl TrackSource for HtmlSource {
         start_page: u32,
         page_count: u32,
         progress: ProgressFn,
+        on_page: PageFn,
     ) -> Result<TrackBatch> {
-        self.load_range(forum, start_page.max(1), page_count.clamp(1, 5), progress, false)
-            .await
+        self.load_range(
+            forum,
+            start_page.max(1),
+            page_count.clamp(1, 5),
+            progress,
+            on_page,
+            false,
+        )
+        .await
     }
 
-    async fn refresh_page_one(&self, forum: &Forum, progress: ProgressFn) -> Result<TrackBatch> {
-        self.load_range(forum, 1, 1, progress, true).await
+    async fn refresh_page_one(
+        &self,
+        forum: &Forum,
+        progress: ProgressFn,
+        on_page: PageFn,
+    ) -> Result<TrackBatch> {
+        self.load_range(forum, 1, 1, progress, on_page, true).await
     }
 
     async fn resolve_track(&self, track: &Track) -> Result<Track> {
@@ -516,6 +540,13 @@ impl TrackSource for HtmlSource {
     async fn send_thanks(&self, reaction_url: &str) -> Result<()> {
         self.http.action(&Url::parse(reaction_url)?).await
     }
+}
+
+/// A child with the same name but a different forum ID is a duplicate genre,
+/// not a self-link. The true self-link keeps the parent's URL.
+fn duplicate_name(child: &Forum, parent: &Forum) -> bool {
+    child.name.eq_ignore_ascii_case(&parent.name)
+        && child.url.trim_end_matches('/') != parent.url.trim_end_matches('/')
 }
 
 fn absolute_url(base: &Url, src: &str) -> Option<Url> {

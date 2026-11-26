@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use edmc_core::{Forum, QualityVariant, Track, TrackBatch};
 
 use crate::error::{Error, Result};
-use crate::scrape::{ProgressFn, TrackSource};
+use crate::scrape::{PageFn, ProgressFn, TrackSource};
 
 /// Placeholder for the official Invision Community API at `edmc.to/api/`.
 /// It requires an admin-issued key; the trait is already in place so switching
@@ -41,13 +41,19 @@ impl TrackSource for ApiSource {
         _start_page: u32,
         _page_count: u32,
         _progress: ProgressFn,
+        _on_page: PageFn,
     ) -> Result<TrackBatch> {
         Err(Error::NotConfigured(
             "official API endpoints have not been mapped yet".into(),
         ))
     }
 
-    async fn refresh_page_one(&self, _forum: &Forum, _progress: ProgressFn) -> Result<TrackBatch> {
+    async fn refresh_page_one(
+        &self,
+        _forum: &Forum,
+        _progress: ProgressFn,
+        _on_page: PageFn,
+    ) -> Result<TrackBatch> {
         Err(Error::NotConfigured(
             "official API endpoints have not been mapped yet".into(),
         ))
